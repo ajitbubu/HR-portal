@@ -3,7 +3,7 @@ import { AuthProvider } from "@/lib/auth";
 import "@/styles/globals.css";
 
 export const metadata: Metadata = {
-  title: "DataSafeguard HR",
+  title: "HR Portal - Enterprise Human Resources",
   description: "Enterprise HR Management Platform",
 };
 

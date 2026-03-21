@@ -6,6 +6,7 @@ from app.core.dependencies import get_current_user, require_roles
 from app.models.user import User, Employee
 from app.models.misc import HRTicket
 from app.schemas.common import HRTicketCreate, HRTicketResponse
+from app.services.notification_service import create_notification, notify_hr_admins
 
 router = APIRouter(prefix="/hr-tickets", tags=["HR Tickets"])
 
@@ -29,6 +30,16 @@ def create_ticket(req: HRTicketCreate, db: Session = Depends(get_db), current_us
     db.add(ticket)
     db.commit()
     db.refresh(ticket)
+
+    # Notify HR admins about the new ticket
+    notify_hr_admins(
+        db,
+        title="New HR Ticket",
+        message=f"{emp.first_name} {emp.last_name} submitted: {req.subject}",
+        type="system",
+        link="/hr-tickets",
+    )
+
     return ticket
 
 
@@ -43,4 +54,16 @@ def update_ticket_status(
         raise HTTPException(status_code=404, detail="Ticket not found")
     ticket.status = status
     db.commit()
+
+    # Notify the ticket creator about the status change
+    emp = db.query(Employee).filter(Employee.id == ticket.employee_id).first()
+    if emp and emp.user_id:
+        create_notification(
+            db, emp.user_id,
+            "HR Ticket Updated",
+            f"Your ticket \"{ticket.subject}\" has been updated to: {status}",
+            type="system",
+            link="/hr-tickets",
+        )
+
     return {"message": "Ticket updated"}

@@ -1,7 +1,11 @@
+import os
+import uuid
+
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.config import settings
 from app.core.dependencies import get_current_user, require_roles
 from app.core.security import hash_password
 from app.models.user import User, Employee
@@ -11,6 +15,7 @@ from app.schemas.employee import (
 )
 from app.services.employee_service import generate_employee_id, search_employees, bulk_import_employees
 from app.services.audit_service import log_audit
+from app.services.notification_service import create_notification, notify_hr_admins
 
 router = APIRouter(prefix="/employees", tags=["Employees"])
 
@@ -126,6 +131,27 @@ def create_employee(
     db.commit()
     db.refresh(emp)
 
+    # Welcome notification for the new employee
+    create_notification(
+        db, user.id,
+        "Welcome to the Team!",
+        f"Welcome {req.first_name}! Your account has been set up. Please complete your profile and check your onboarding tasks.",
+        type="system",
+        link="/onboarding",
+    )
+
+    # Notify manager about new team member
+    if req.manager_id:
+        manager = db.query(Employee).filter(Employee.id == req.manager_id).first()
+        if manager and manager.user_id:
+            create_notification(
+                db, manager.user_id,
+                "New Team Member",
+                f"{req.first_name} {req.last_name} has joined your team.",
+                type="system",
+                link=f"/employees/{emp.id}",
+            )
+
     log_audit(db, current_user.id, "create", "employee", emp.id)
     return _to_response(emp)
 
@@ -167,6 +193,91 @@ def deactivate_employee(
     db.commit()
     log_audit(db, current_user.id, "deactivate", "employee", emp.id)
     return {"message": "Employee deactivated"}
+
+
+@router.post("/profile-photo/upload")
+async def upload_profile_photo(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Upload profile photo for the current user."""
+    emp = db.query(Employee).filter(Employee.user_id == current_user.id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee profile not found")
+
+    # Validate file type
+    allowed_types = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+    if file.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="Only JPEG, PNG, WebP, and GIF images are allowed")
+
+    content = await file.read()
+    if len(content) > 5 * 1024 * 1024:  # 5MB limit for photos
+        raise HTTPException(status_code=400, detail="File size must be under 5MB")
+
+    # Save file
+    ext = file.filename.rsplit(".", 1)[-1] if "." in file.filename else "jpg"
+    filename = f"{uuid.uuid4().hex}.{ext}"
+    upload_dir = os.path.join(settings.UPLOAD_DIR, "profile-photos")
+    os.makedirs(upload_dir, exist_ok=True)
+    file_path = os.path.join(upload_dir, filename)
+
+    with open(file_path, "wb") as f:
+        f.write(content)
+
+    # Delete old photo if exists
+    if emp.profile_photo:
+        old_path = emp.profile_photo.lstrip("/")
+        if os.path.exists(old_path):
+            os.remove(old_path)
+
+    # Update employee record
+    emp.profile_photo = f"/uploads/profile-photos/{filename}"
+    db.commit()
+
+    log_audit(db, current_user.id, "update", "profile_photo", emp.id)
+    return {"profile_photo": emp.profile_photo, "message": "Profile photo updated"}
+
+
+@router.post("/{employee_id}/profile-photo")
+async def upload_employee_photo(
+    employee_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles("super_admin", "hr_admin")),
+):
+    """Upload profile photo for any employee (admin only)."""
+    emp = db.query(Employee).filter(Employee.id == employee_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    allowed_types = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+    if file.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="Only JPEG, PNG, WebP, and GIF images are allowed")
+
+    content = await file.read()
+    if len(content) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File size must be under 5MB")
+
+    ext = file.filename.rsplit(".", 1)[-1] if "." in file.filename else "jpg"
+    filename = f"{uuid.uuid4().hex}.{ext}"
+    upload_dir = os.path.join(settings.UPLOAD_DIR, "profile-photos")
+    os.makedirs(upload_dir, exist_ok=True)
+    file_path = os.path.join(upload_dir, filename)
+
+    with open(file_path, "wb") as f:
+        f.write(content)
+
+    if emp.profile_photo:
+        old_path = emp.profile_photo.lstrip("/")
+        if os.path.exists(old_path):
+            os.remove(old_path)
+
+    emp.profile_photo = f"/uploads/profile-photos/{filename}"
+    db.commit()
+
+    log_audit(db, current_user.id, "update", "profile_photo", emp.id)
+    return {"profile_photo": emp.profile_photo, "message": "Profile photo updated"}
 
 
 @router.post("/bulk-import")

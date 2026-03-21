@@ -9,6 +9,7 @@ from app.core.dependencies import get_current_user
 from app.models.user import User, Employee
 from app.models.document import Document
 from app.schemas.common import DocumentResponse
+from app.services.notification_service import create_notification
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
 
@@ -57,6 +58,18 @@ async def upload_document(
     db.add(doc)
     db.commit()
     db.refresh(doc)
+
+    # Notify the employee if someone else uploaded a document to their profile
+    target_emp = db.query(Employee).filter(Employee.id == employee_id).first()
+    if target_emp and target_emp.user_id and uploader and uploader.id != target_emp.id:
+        create_notification(
+            db, target_emp.user_id,
+            "New Document Uploaded",
+            f"A new document \"{file.filename}\" has been uploaded to your profile.",
+            type="system",
+            link="/documents",
+        )
+
     return doc
 
 
