@@ -6,6 +6,7 @@ from app.core.security import verify_password, hash_password, create_access_toke
 from app.core.dependencies import get_current_user
 from app.models.user import User, Employee
 from app.schemas.auth import LoginRequest, TokenResponse, RegisterRequest, UserResponse
+from datetime import date
 from app.services.audit_service import log_audit
 from app.services.employee_service import generate_employee_id
 
@@ -50,7 +51,7 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
         first_name=req.first_name,
         last_name=req.last_name,
         email=req.email,
-        joining_date="2026-01-01",
+        joining_date=date.today(),
     )
     db.add(emp)
     db.commit()

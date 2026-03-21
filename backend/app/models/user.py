@@ -90,4 +90,4 @@ class Employee(Base):
     leave_balances = relationship("LeaveBalance", back_populates="employee")
     salary_history = relationship("SalaryHistory", back_populates="employee", foreign_keys="SalaryHistory.employee_id")
     attendance_records = relationship("AttendanceRecord", back_populates="employee")
-    documents = relationship("Document", back_populates="employee")
+    documents = relationship("Document", back_populates="employee", foreign_keys="Document.employee_id")

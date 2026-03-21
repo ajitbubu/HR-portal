@@ -1,5 +1,6 @@
-from datetime import date, datetime
-from pydantic import BaseModel
+from datetime import date, datetime, time
+from typing import Any
+from pydantic import BaseModel, field_validator
 
 
 class AttendanceCreate(BaseModel):
@@ -14,11 +15,20 @@ class AttendanceResponse(BaseModel):
     id: int
     employee_id: int
     date: date
-    check_in: str | None = None
-    check_out: str | None = None
+    check_in: Any = None
+    check_out: Any = None
     status: str
-    hours_worked: float
+    hours_worked: float | None = None
     notes: str | None = None
+
+    @field_validator("check_in", "check_out", mode="before")
+    @classmethod
+    def serialize_time(cls, v: Any) -> str | None:
+        if v is None:
+            return None
+        if isinstance(v, time):
+            return v.isoformat()
+        return str(v)
 
     class Config:
         from_attributes = True
