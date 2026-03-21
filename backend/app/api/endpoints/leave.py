@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.user import User, Employee
-from app.models.leave import LeaveRequest, LeaveBalance, LeaveType, LeaveStatus
+from app.models.leave import LeaveRequest, LeaveBalance, LeaveType, LeaveStatus, LeaveApproval
 from app.schemas.leave import (
     LeaveApplyRequest, LeaveRequestResponse, LeaveBalanceResponse,
     LeaveBalanceCheckResponse, LeaveTypeResponse, LeaveApprovalResponse,
@@ -15,6 +15,7 @@ from app.services.leave_service import (
 )
 from app.services.approval_service import create_approval_chain
 from app.services.audit_service import log_audit
+from app.services.notification_service import create_notification
 
 router = APIRouter(prefix="/leave", tags=["Leave Management"])
 
@@ -199,6 +200,22 @@ def cancel_leave(
     lr.status = LeaveStatus.CANCELLED.value
     update_leave_balance_on_reject(db, emp.id, lr.leave_type_id, lr.total_days, lr.start_date.year)
     db.commit()
+
+    # Notify pending approvers about the cancellation
+    pending_approvals = db.query(LeaveApproval).filter(
+        LeaveApproval.leave_request_id == lr.id,
+        LeaveApproval.status == "pending",
+    ).all()
+    for approval in pending_approvals:
+        approver = db.query(Employee).filter(Employee.id == approval.approver_id).first()
+        if approver and approver.user_id:
+            create_notification(
+                db, approver.user_id,
+                "Leave Request Cancelled",
+                f"{emp.first_name} {emp.last_name} has cancelled their leave request ({lr.start_date} to {lr.end_date}).",
+                type="leave",
+                link="/approvals",
+            )
 
     log_audit(db, current_user.id, "cancel", "leave_request", lr.id)
     return {"message": "Leave request cancelled"}

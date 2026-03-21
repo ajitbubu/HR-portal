@@ -6,6 +6,7 @@ from app.core.dependencies import get_current_user, require_roles
 from app.models.user import User, Employee
 from app.models.misc import Announcement
 from app.schemas.common import AnnouncementCreate, AnnouncementResponse
+from app.services.notification_service import notify_all_active_users
 
 router = APIRouter(prefix="/announcements", tags=["Announcements"])
 
@@ -37,6 +38,18 @@ def create_announcement(
     db.add(ann)
     db.commit()
     db.refresh(ann)
+
+    # Notify all active users about the new announcement
+    priority_label = f" [{req.priority.upper()}]" if req.priority in ("high", "urgent") else ""
+    notify_all_active_users(
+        db,
+        title=f"New Announcement{priority_label}",
+        message=f"{req.title}",
+        type="announcement",
+        link="/announcements",
+        exclude_user_id=current_user.id,
+    )
+
     return AnnouncementResponse(
         id=ann.id, title=ann.title, content=ann.content,
         author_name=f"{emp.first_name} {emp.last_name}",

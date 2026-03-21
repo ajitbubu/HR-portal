@@ -11,6 +11,7 @@ from app.schemas.employee import (
 )
 from app.services.employee_service import generate_employee_id, search_employees, bulk_import_employees
 from app.services.audit_service import log_audit
+from app.services.notification_service import create_notification, notify_hr_admins
 
 router = APIRouter(prefix="/employees", tags=["Employees"])
 
@@ -125,6 +126,27 @@ def create_employee(
     db.add(emp)
     db.commit()
     db.refresh(emp)
+
+    # Welcome notification for the new employee
+    create_notification(
+        db, user.id,
+        "Welcome to the Team!",
+        f"Welcome {req.first_name}! Your account has been set up. Please complete your profile and check your onboarding tasks.",
+        type="system",
+        link="/onboarding",
+    )
+
+    # Notify manager about new team member
+    if req.manager_id:
+        manager = db.query(Employee).filter(Employee.id == req.manager_id).first()
+        if manager and manager.user_id:
+            create_notification(
+                db, manager.user_id,
+                "New Team Member",
+                f"{req.first_name} {req.last_name} has joined your team.",
+                type="system",
+                link=f"/employees/{emp.id}",
+            )
 
     log_audit(db, current_user.id, "create", "employee", emp.id)
     return _to_response(emp)
