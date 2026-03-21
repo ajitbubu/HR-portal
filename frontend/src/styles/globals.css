@@ -5,31 +5,87 @@
 @layer base {
   body {
     @apply bg-gray-50 text-gray-900 antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+  ::selection {
+    @apply bg-primary-100 text-primary-900;
+  }
+  * {
+    @apply scroll-smooth;
   }
 }
 
 @layer components {
   .btn-primary {
-    @apply bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors font-medium text-sm;
+    @apply bg-primary-600 text-white px-4 py-2.5 rounded-xl hover:bg-primary-700 active:bg-primary-800 transition-all duration-200 font-medium text-sm shadow-sm hover:shadow-md;
   }
   .btn-secondary {
-    @apply bg-white text-gray-700 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors font-medium text-sm;
+    @apply bg-white text-gray-700 px-4 py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 hover:border-gray-300 active:bg-gray-100 transition-all duration-200 font-medium text-sm;
   }
   .btn-danger {
-    @apply bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium text-sm;
+    @apply bg-red-600 text-white px-4 py-2.5 rounded-xl hover:bg-red-700 active:bg-red-800 transition-all duration-200 font-medium text-sm shadow-sm;
+  }
+  .btn-ghost {
+    @apply text-gray-600 px-4 py-2.5 rounded-xl hover:bg-gray-100 active:bg-gray-200 transition-all duration-200 font-medium text-sm;
   }
   .card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-200 p-6;
+    @apply bg-white rounded-2xl shadow-card border border-gray-100 p-6 transition-all duration-200;
+  }
+  .card-hover {
+    @apply bg-white rounded-2xl shadow-card border border-gray-100 p-6 transition-all duration-200 hover:shadow-card-hover hover:border-gray-200 hover:-translate-y-0.5;
+  }
+  .card-interactive {
+    @apply bg-white rounded-2xl shadow-card border border-gray-100 p-6 transition-all duration-300 hover:shadow-card-hover hover:border-primary-200 hover:-translate-y-1 cursor-pointer;
   }
   .input-field {
-    @apply w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+    @apply w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 transition-all duration-200 placeholder:text-gray-400;
   }
   .badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+    @apply inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold tracking-wide;
   }
-  .badge-success { @apply bg-green-100 text-green-800; }
-  .badge-warning { @apply bg-yellow-100 text-yellow-800; }
-  .badge-danger { @apply bg-red-100 text-red-800; }
-  .badge-info { @apply bg-blue-100 text-blue-800; }
-  .badge-gray { @apply bg-gray-100 text-gray-800; }
+  .badge-success { @apply bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/10; }
+  .badge-warning { @apply bg-amber-50 text-amber-700 ring-1 ring-amber-600/10; }
+  .badge-danger { @apply bg-red-50 text-red-700 ring-1 ring-red-600/10; }
+  .badge-info { @apply bg-blue-50 text-blue-700 ring-1 ring-blue-600/10; }
+  .badge-gray { @apply bg-gray-50 text-gray-600 ring-1 ring-gray-500/10; }
+  .badge-purple { @apply bg-purple-50 text-purple-700 ring-1 ring-purple-600/10; }
+
+  /* Avatar styles */
+  .avatar-sm {
+    @apply w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0;
+  }
+  .avatar-md {
+    @apply w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0;
+  }
+  .avatar-lg {
+    @apply w-14 h-14 rounded-full flex items-center justify-center text-lg font-bold flex-shrink-0;
+  }
+  .avatar-xl {
+    @apply w-24 h-24 rounded-full flex items-center justify-center text-3xl font-bold flex-shrink-0;
+  }
+
+  /* Section header */
+  .section-title {
+    @apply text-sm font-semibold text-gray-400 uppercase tracking-wider;
+  }
+
+  /* Divider */
+  .divider {
+    @apply border-t border-gray-100;
+  }
+}
+
+/* Smooth scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-400;
 }
