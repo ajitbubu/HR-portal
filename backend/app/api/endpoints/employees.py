@@ -1,0 +1,181 @@
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
+from sqlalchemy.orm import Session
+
+from app.core.database import get_db
+from app.core.dependencies import get_current_user, require_roles
+from app.core.security import hash_password
+from app.models.user import User, Employee
+from app.schemas.employee import (
+    EmployeeCreate, EmployeeUpdate, EmployeeResponse, EmployeeListResponse,
+    DepartmentInfo, DesignationInfo, LocationInfo, ManagerInfo,
+)
+from app.services.employee_service import generate_employee_id, search_employees, bulk_import_employees
+from app.services.audit_service import log_audit
+
+router = APIRouter(prefix="/employees", tags=["Employees"])
+
+
+def _to_response(emp: Employee) -> EmployeeResponse:
+    return EmployeeResponse(
+        id=emp.id,
+        employee_id=emp.employee_id,
+        first_name=emp.first_name,
+        last_name=emp.last_name,
+        email=emp.email,
+        phone=emp.phone,
+        date_of_birth=emp.date_of_birth,
+        gender=emp.gender,
+        address=emp.address,
+        city=emp.city,
+        state=emp.state,
+        country=emp.country,
+        zip_code=emp.zip_code,
+        department=DepartmentInfo.model_validate(emp.department) if emp.department else None,
+        designation=DesignationInfo.model_validate(emp.designation) if emp.designation else None,
+        location=LocationInfo.model_validate(emp.location) if emp.location else None,
+        manager=ManagerInfo(
+            id=emp.manager.id,
+            first_name=emp.manager.first_name,
+            last_name=emp.manager.last_name,
+            employee_id=emp.manager.employee_id,
+        ) if emp.manager else None,
+        band=emp.band,
+        employment_type=emp.employment_type,
+        status=emp.status,
+        joining_date=emp.joining_date,
+        profile_photo=emp.profile_photo,
+        created_at=emp.created_at,
+    )
+
+
+@router.get("", response_model=EmployeeListResponse)
+def list_employees(
+    q: str | None = None,
+    department_id: int | None = None,
+    status: str | None = None,
+    employment_type: str | None = None,
+    location_id: int | None = None,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    manager_id = None
+    if current_user.role == "manager":
+        emp = db.query(Employee).filter(Employee.user_id == current_user.id).first()
+        if emp:
+            manager_id = emp.id
+
+    items, total = search_employees(
+        db, query=q, department_id=department_id, status=status,
+        employment_type=employment_type, location_id=location_id,
+        manager_id=manager_id, page=page, per_page=per_page,
+    )
+    return EmployeeListResponse(
+        items=[_to_response(e) for e in items],
+        total=total, page=page, per_page=per_page,
+    )
+
+
+@router.get("/{employee_id}", response_model=EmployeeResponse)
+def get_employee(employee_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    emp = db.query(Employee).filter(Employee.id == employee_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    return _to_response(emp)
+
+
+@router.post("", response_model=EmployeeResponse)
+def create_employee(
+    req: EmployeeCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles("super_admin", "hr_admin")),
+):
+    existing = db.query(User).filter(User.email == req.email).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already exists")
+
+    user = User(email=req.email, password_hash=hash_password(req.password), role=req.role)
+    db.add(user)
+    db.flush()
+
+    emp = Employee(
+        user_id=user.id,
+        employee_id=generate_employee_id(db),
+        first_name=req.first_name,
+        last_name=req.last_name,
+        email=req.email,
+        phone=req.phone,
+        date_of_birth=req.date_of_birth,
+        gender=req.gender,
+        address=req.address,
+        city=req.city,
+        state=req.state,
+        country=req.country,
+        zip_code=req.zip_code,
+        department_id=req.department_id,
+        designation_id=req.designation_id,
+        location_id=req.location_id,
+        manager_id=req.manager_id,
+        band=req.band,
+        employment_type=req.employment_type,
+        joining_date=req.joining_date,
+        profile_photo=req.profile_photo,
+    )
+    db.add(emp)
+    db.commit()
+    db.refresh(emp)
+
+    log_audit(db, current_user.id, "create", "employee", emp.id)
+    return _to_response(emp)
+
+
+@router.put("/{employee_id}", response_model=EmployeeResponse)
+def update_employee(
+    employee_id: int,
+    req: EmployeeUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles("super_admin", "hr_admin")),
+):
+    emp = db.query(Employee).filter(Employee.id == employee_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    update_data = req.model_dump(exclude_unset=True)
+    for key, val in update_data.items():
+        setattr(emp, key, val)
+    db.commit()
+    db.refresh(emp)
+
+    log_audit(db, current_user.id, "update", "employee", emp.id, new_values=update_data)
+    return _to_response(emp)
+
+
+@router.delete("/{employee_id}")
+def deactivate_employee(
+    employee_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles("super_admin", "hr_admin")),
+):
+    emp = db.query(Employee).filter(Employee.id == employee_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    emp.status = "inactive"
+    user = db.query(User).filter(User.id == emp.user_id).first()
+    if user:
+        user.is_active = False
+    db.commit()
+    log_audit(db, current_user.id, "deactivate", "employee", emp.id)
+    return {"message": "Employee deactivated"}
+
+
+@router.post("/bulk-import")
+async def bulk_import(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles("super_admin", "hr_admin")),
+):
+    content = (await file.read()).decode("utf-8")
+    count, errors = bulk_import_employees(db, content, current_user.id)
+    log_audit(db, current_user.id, "bulk_import", "employee", new_values={"count": count})
+    return {"imported": count, "errors": errors}
