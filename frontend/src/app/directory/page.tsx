@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import Avatar from "@/components/ui/Avatar";
 import { useApi } from "@/hooks/useApi";
 import type { EmployeeList, Employee } from "@/types";
 
@@ -34,8 +35,8 @@ export default function DirectoryPage() {
             href={`/employees/${emp.id}`}
             className="card-interactive flex flex-col items-center text-center py-6 group"
           >
-            <div className="w-16 h-16 bg-gradient-to-br from-primary-400 to-purple-500 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-sm mb-3 transition-transform group-hover:scale-105">
-              {emp.first_name[0]}{emp.last_name[0]}
+            <div className="transition-transform group-hover:scale-105 mb-3">
+              <Avatar firstName={emp.first_name} lastName={emp.last_name} photoUrl={emp.profile_photo} size="xl" rounded="2xl" />
             </div>
             <p className="text-sm font-semibold text-gray-900 group-hover:text-primary-700 transition-colors">{emp.first_name} {emp.last_name}</p>
             <p className="text-xs text-gray-500 mt-0.5">{emp.designation?.title || "No designation"}</p>

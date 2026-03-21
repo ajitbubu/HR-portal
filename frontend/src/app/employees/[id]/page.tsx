@@ -3,6 +3,7 @@
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import ProfileAvatar from "@/components/ui/ProfileAvatar";
 import { useApi } from "@/hooks/useApi";
 import type { Employee } from "@/types";
 
@@ -45,9 +46,12 @@ export default function EmployeeDetailPage() {
             <div className="absolute right-24 -bottom-4 w-20 h-20 rounded-full bg-white/5" />
           </div>
           <div className="absolute -bottom-14 left-8 flex items-end gap-5">
-            <div className="w-24 h-24 bg-gradient-to-br from-primary-400 to-purple-500 rounded-2xl flex items-center justify-center text-white text-3xl font-bold shadow-lg ring-4 ring-white">
-              {emp.first_name[0]}{emp.last_name[0]}
-            </div>
+            <ProfileAvatar
+              firstName={emp.first_name}
+              lastName={emp.last_name}
+              photoUrl={emp.profile_photo}
+              size="xl"
+            />
             <div className="pb-1">
               <h2 className="text-xl font-bold text-gray-900">{emp.first_name} {emp.last_name}</h2>
               <p className="text-gray-500 text-sm">{emp.designation?.title || "No Designation"} &middot; {emp.department?.name || "No Department"}</p>

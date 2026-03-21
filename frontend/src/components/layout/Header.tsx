@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
-import type { Notification as NotifType } from "@/types";
+import Avatar from "@/components/ui/Avatar";
+import type { Notification as NotifType, Employee } from "@/types";
 
 const typeIcon: Record<string, string> = {
   leave: "M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5",
@@ -37,12 +38,19 @@ export default function Header({ title }: { title: string }) {
   const [notifications, setNotifications] = useState<NotifType[]>([]);
   const [showNotifs, setShowNotifs] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     api.get<{ count: number }>("/notifications/unread-count")
       .then((res) => setUnreadCount(res.count))
       .catch(() => {});
+
+    if (user?.employee_id) {
+      api.get<Employee>(`/employees/${user.employee_id}`)
+        .then((emp) => setProfilePhoto(emp.profile_photo || null))
+        .catch(() => {});
+    }
 
     // Poll every 30s
     const interval = setInterval(() => {
@@ -169,9 +177,13 @@ export default function Header({ title }: { title: string }) {
 
         {/* User */}
         <div className="flex items-center gap-2.5 pl-1">
-          <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-xs">
-            {user?.name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase()}
-          </div>
+          <Avatar
+            firstName={user?.name?.split(" ")[0] || user?.email || ""}
+            lastName={user?.name?.split(" ").slice(1).join(" ") || ""}
+            photoUrl={profilePhoto}
+            size="sm"
+            rounded="full"
+          />
           <div className="hidden sm:block">
             <p className="text-sm font-medium text-gray-900 leading-tight">{user?.name || user?.email}</p>
             <p className="text-[11px] text-gray-400 capitalize leading-tight">{user?.role?.replace("_", " ")}</p>

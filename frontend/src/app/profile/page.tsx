@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import ProfileAvatar from "@/components/ui/ProfileAvatar";
 import { useAuth } from "@/lib/auth";
 import { useApi } from "@/hooks/useApi";
 import type { Employee, LeaveBalance } from "@/types";
@@ -26,8 +28,9 @@ function InfoRow({ label, value, icon }: { label: string; value?: string | null;
 
 export default function ProfilePage() {
   const { user } = useAuth();
-  const { data: emp } = useApi<Employee>(`/employees/${user?.employee_id}`, [user?.employee_id]);
+  const { data: emp, refetch } = useApi<Employee>(`/employees/${user?.employee_id}`, [user?.employee_id]);
   const { data: balances } = useApi<LeaveBalance[]>("/leave/balance?year=2026");
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
 
   if (!emp) return (
     <DashboardLayout title="My Profile">
@@ -48,9 +51,14 @@ export default function ProfilePage() {
             </div>
           </div>
           <div className="absolute -bottom-16 left-8 flex items-end gap-5">
-            <div className="w-28 h-28 bg-gradient-to-br from-primary-400 to-purple-500 rounded-2xl flex items-center justify-center text-white text-4xl font-bold shadow-lg ring-4 ring-white">
-              {emp.first_name[0]}{emp.last_name[0]}
-            </div>
+            <ProfileAvatar
+              firstName={emp.first_name}
+              lastName={emp.last_name}
+              photoUrl={photoUrl || emp.profile_photo}
+              size="2xl"
+              editable
+              onPhotoUpdated={(url) => { setPhotoUrl(url); refetch(); }}
+            />
             <div className="pb-2">
               <h2 className="text-2xl font-bold text-gray-900">{emp.first_name} {emp.last_name}</h2>
               <p className="text-gray-500 text-sm">

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import Avatar from "@/components/ui/Avatar";
 import { useApi } from "@/hooks/useApi";
 import type { OrgChartNode } from "@/types";
 
@@ -36,15 +37,13 @@ function OrgNode({ node, level = 0 }: { node: OrgChartNode; level?: number }) {
           href={`/employees/${node.id}`}
           className="flex items-center gap-3 py-2.5 px-3 rounded-xl hover:bg-gray-50 transition-all duration-200 group flex-1 min-w-0"
         >
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-sm ${
-            level === 0
-              ? "bg-gradient-to-br from-primary-500 to-purple-600 text-white"
-              : level === 1
-              ? "bg-gradient-to-br from-primary-400 to-indigo-500 text-white"
-              : "bg-primary-50 text-primary-700"
-          }`}>
-            {node.name.split(" ").map((n) => n[0]).join("")}
-          </div>
+          <Avatar
+            firstName={node.name.split(" ")[0] || ""}
+            lastName={node.name.split(" ").slice(1).join(" ") || ""}
+            photoUrl={node.profile_photo}
+            size="md"
+            gradient={level === 0 ? "from-primary-500 to-purple-600" : level === 1 ? "from-primary-400 to-indigo-500" : "from-primary-200 to-indigo-200"}
+          />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-primary-700 transition-colors">{node.name}</p>

@@ -1,8 +1,11 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+import { api } from "@/lib/api";
+import type { Employee } from "@/types";
 
 const mainNav = [
   { label: "Dashboard", href: "/dashboard", icon: "M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25", roles: ["super_admin", "hr_admin", "manager", "approver", "employee"] },
@@ -69,9 +72,20 @@ function NavSection({ title, items, userRole, pathname }: NavSectionProps) {
   );
 }
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http://localhost:8000";
+
 export default function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user?.employee_id) {
+      api.get<Employee>(`/employees/${user.employee_id}`)
+        .then((emp) => setProfilePhoto(emp.profile_photo || null))
+        .catch(() => {});
+    }
+  }, [user?.employee_id]);
 
   if (!user) return null;
 
@@ -107,8 +121,13 @@ export default function Sidebar() {
       {/* User */}
       <div className="border-t border-white/10 p-4">
         <Link href="/profile" className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-white/8 transition-all duration-200 group">
-          <div className="w-9 h-9 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-sm">
-            {user.name?.charAt(0) || user.email.charAt(0).toUpperCase()}
+          <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-sm flex-shrink-0 overflow-hidden bg-gradient-to-br from-indigo-400 to-purple-500">
+            {profilePhoto ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={`${API_BASE}${profilePhoto}`} alt="" className="w-full h-full object-cover" />
+            ) : (
+              user.name?.charAt(0) || user.email.charAt(0).toUpperCase()
+            )}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-white truncate">{user.name || user.email}</p>
