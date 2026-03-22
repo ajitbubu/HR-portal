@@ -5,15 +5,11 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
+import { SidebarProvider, useSidebar } from "./SidebarContext";
 
-export default function DashboardLayout({
-  children,
-  title = "Dashboard",
-}: {
-  children: React.ReactNode;
-  title?: string;
-}) {
+function Layout({ children, title }: { children: React.ReactNode; title: string }) {
   const { user, loading } = useAuth();
+  const { collapsed } = useSidebar();
   const router = useRouter();
 
   useEffect(() => {
@@ -35,10 +31,24 @@ export default function DashboardLayout({
   return (
     <div className="min-h-screen bg-gray-50">
       <Sidebar />
-      <div className="ml-64">
+      <div className={`transition-all duration-300 ${collapsed ? "ml-16" : "ml-64"}`}>
         <Header title={title} />
         <main className="p-6">{children}</main>
       </div>
     </div>
+  );
+}
+
+export default function DashboardLayout({
+  children,
+  title = "Dashboard",
+}: {
+  children: React.ReactNode;
+  title?: string;
+}) {
+  return (
+    <SidebarProvider>
+      <Layout title={title}>{children}</Layout>
+    </SidebarProvider>
   );
 }
