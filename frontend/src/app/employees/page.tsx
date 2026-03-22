@@ -82,9 +82,9 @@ export default function EmployeesPage() {
       ) : (
         <>
           <DataTable
-            columns={columns}
-            data={data?.items || []}
-            onRowClick={(e) => router.push(`/employees/${e.id}`)}
+            columns={columns as never}
+            data={(data?.items || []) as never}
+            onRowClick={(e) => router.push(`/employees/${(e as {id: number}).id}`)}
           />
           {data && data.total > data.per_page && (
             <div className="flex justify-between items-center mt-4">

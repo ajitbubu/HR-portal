@@ -8,7 +8,7 @@ interface Setting { id: number; key: string; value: string | null; category: str
 export default function SettingsPage() {
   const { data: settings } = useApi<Setting[]>("/admin/settings");
 
-  const categories = [...new Set(settings?.map((s) => s.category || "general"))];
+  const categories = Array.from(new Set(settings?.map((s) => s.category || "general")));
 
   return (
     <DashboardLayout title="Company Settings">
