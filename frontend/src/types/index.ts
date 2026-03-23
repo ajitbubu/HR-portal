@@ -25,12 +25,20 @@ export interface Employee {
   designation?: { id: number; title: string; band?: string };
   location?: { id: number; name: string; city?: string };
   manager?: { id: number; first_name: string; last_name: string; employee_id: string };
+  team?: { id: number; name: string };
+  direct_reports?: { id: number; first_name: string; last_name: string; employee_id: string }[];
   band?: string;
   employment_type: string;
   status: string;
   joining_date: string;
   profile_photo?: string;
   created_at?: string;
+}
+
+export interface Team {
+  id: number;
+  name: string;
+  department_id?: number;
 }
 
 export interface EmployeeList {

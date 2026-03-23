@@ -1,17 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { api } from "@/lib/api";
 import { useApi } from "@/hooks/useApi";
+import { useAuth } from "@/lib/auth";
 import type { Department, Location, Designation } from "@/types";
 
 export default function NewEmployeePage() {
+  const { isRole, loading: authLoading } = useAuth();
   const router = useRouter();
+
   const { data: departments } = useApi<Department[]>("/admin/departments");
   const { data: locations } = useApi<Location[]>("/admin/locations");
   const { data: designations } = useApi<Designation[]>("/admin/designations");
+
+  useEffect(() => {
+    if (!authLoading && !isRole("super_admin", "hr_admin")) {
+      router.replace("/employees");
+    }
+  }, [authLoading, isRole, router]);
+
+  if (!authLoading && !isRole("super_admin", "hr_admin")) return null;
 
   const [form, setForm] = useState({
     first_name: "", last_name: "", email: "", phone: "",

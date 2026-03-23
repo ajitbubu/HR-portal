@@ -11,7 +11,7 @@ from app.core.security import hash_password
 from app.models.user import User, Employee
 from app.schemas.employee import (
     EmployeeCreate, EmployeeUpdate, EmployeeResponse, EmployeeListResponse,
-    DepartmentInfo, DesignationInfo, LocationInfo, ManagerInfo,
+    DepartmentInfo, DesignationInfo, LocationInfo, ManagerInfo, TeamInfo,
 )
 from app.services.employee_service import generate_employee_id, search_employees, bulk_import_employees
 from app.services.audit_service import log_audit
@@ -44,6 +44,11 @@ def _to_response(emp: Employee) -> EmployeeResponse:
             last_name=emp.manager.last_name,
             employee_id=emp.manager.employee_id,
         ) if emp.manager else None,
+        team=TeamInfo(id=emp.team.id, name=emp.team.name) if emp.team else None,
+        direct_reports=[
+            ManagerInfo(id=s.id, first_name=s.first_name, last_name=s.last_name, employee_id=s.employee_id)
+            for s in (emp.subordinates or [])
+        ],
         band=emp.band,
         employment_type=emp.employment_type,
         status=emp.status,
