@@ -15,7 +15,7 @@ from app.services.leave_service import (
 )
 from app.services.approval_service import create_approval_chain
 from app.services.audit_service import log_audit
-from app.services.notification_service import create_notification
+from app.services.notification_service import create_notification, notify_leave_chain
 
 router = APIRouter(prefix="/leave", tags=["Leave Management"])
 
@@ -61,6 +61,7 @@ def apply_leave(
 
     update_leave_balance_on_apply(db, emp.id, req.leave_type_id, total_days, req.start_date.year)
     create_approval_chain(db, leave_req, emp)
+    notify_leave_chain(db, leave_req, emp)
 
     log_audit(db, current_user.id, "create", "leave_request", leave_req.id)
     db.refresh(leave_req)

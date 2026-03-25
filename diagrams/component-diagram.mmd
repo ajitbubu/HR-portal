@@ -1,0 +1,93 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#1A77F2', 'primaryTextColor': '#fff', 'primaryBorderColor': '#1557B0', 'lineColor': '#64748b'}}}%%
+
+graph LR
+    subgraph Roles["👥 User Roles"]
+        SA["Super Admin\n• Full access"]
+        HA["HR Admin\n• Employees, policies\n• Teams, workflows"]
+        MG["Manager\n• Team view\n• Approvals"]
+        AP["Approver\n• Leave approvals"]
+        EM["Employee\n• Self-service"]
+    end
+
+    subgraph FrontendComponents["Frontend Components"]
+        subgraph Layout["Layout"]
+            SB["Sidebar\n(collapsible, role-filtered nav)"]
+            HD["Header\n(notification bell, user info)"]
+            DL["DashboardLayout\n(auth guard + layout wrapper)"]
+        end
+
+        subgraph UIComp["UI Components"]
+            PA["ProfileAvatar\n(photo upload on hover — HR only)"]
+            DT["DataTable\n(sortable, paginated)"]
+            SC["StatsCard\n(dashboard metrics)"]
+            AV["Avatar\n(initials / photo)"]
+        end
+
+        subgraph Hooks["Hooks & Lib"]
+            UA["useApi()\nfetch + loading + error + refetch"]
+            AC["AuthContext\nuser · login · logout · isRole()"]
+            AP2["api.ts\nget · post · put · delete · upload"]
+        end
+    end
+
+    subgraph BackendComponents["Backend Components"]
+        subgraph CoreLayer["Core"]
+            CFG["config.py\nSettings from env vars"]
+            DBConn["database.py\nSQLAlchemy engine + session"]
+            SEC["security.py\nJWT create/verify + bcrypt hash"]
+            DEP["dependencies.py\nget_current_user + require_roles"]
+        end
+
+        subgraph APILayer["API Routers (18)"]
+            AuthR["auth\nlogin · register · me"]
+            EmpR["employees\nCRUD · photo · bulk import"]
+            LeaveR["leave\napply · balance · calendar"]
+            ApprR["approvals\npending · approve · reject\ndelegate · send back"]
+            AdminR["admin\ndepts · teams · designations\nlocations · leave types\nworkflows · settings"]
+            OtherR["salary · attendance\ndocuments · notifications\ndashboard · org-chart\nannouncements · audit\nreports · onboarding\nholidays · hr-tickets\nperformance"]
+        end
+
+        subgraph ServiceLayer["Services"]
+            EmpSvc["employee_service\nID gen · search · import"]
+            LeaveSvc["leave_service\ndays calc · balance check\nbalance updates"]
+            ApprSvc["approval_service\nworkflow resolve\napprover resolve\nchain create · action process"]
+            NotifSvc["notification_service\ncreate · leave chain\nHR admins · all users"]
+            AuditSvc["audit_service\nlog all actions"]
+        end
+
+        subgraph ModelLayer["ORM Models (20+ tables)"]
+            UserMod["User · Employee"]
+            OrgMod["Department · Team\nDesignation · Location\nBusinessUnit"]
+            LeaveMod["LeaveRequest · LeaveType\nLeaveBalance · LeaveApproval\nLeavePolicy"]
+            WFMod["ApprovalWorkflow\nWorkflowStep · AssignedApprover"]
+            MiscMod["Notification · AuditLog\nAnnouncement · Document\nSalaryHistory · Attendance\nHoliday · HRTicket\nOnboarding · Performance"]
+        end
+    end
+
+    subgraph DataLayer["Data Layer"]
+        PG[("PostgreSQL 16\ndatasafeguard_hr")]
+        FS["File Storage\n/uploads\nprofile-photos/\ndocuments/"]
+    end
+
+    %% Role → Frontend access
+    SA & HA -->|"full nav"| SB
+    MG & AP -->|"limited nav"| SB
+    EM -->|"self-service nav"| SB
+
+    %% Frontend internal
+    DL --> SB & HD
+    HD --> AP2
+    UA --> AP2
+    AC --> AP2
+
+    %% Frontend → Backend
+    AP2 -->|"REST + JWT"| DEP
+
+    %% Backend internal
+    DEP --> APILayer
+    APILayer --> ServiceLayer
+    ServiceLayer --> ModelLayer
+
+    %% Data
+    ModelLayer -->|"SQLAlchemy"| PG
+    EmpR -->|"file read/write"| FS

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import Avatar from "@/components/ui/Avatar";
@@ -35,6 +36,7 @@ function timeAgo(dateStr?: string) {
 
 export default function Header({ title }: { title: string }) {
   const { user } = useAuth();
+  const router = useRouter();
   const [notifications, setNotifications] = useState<NotifType[]>([]);
   const [showNotifs, setShowNotifs] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -52,12 +54,12 @@ export default function Header({ title }: { title: string }) {
         .catch(() => {});
     }
 
-    // Poll every 30s
+    // Poll every 10s
     const interval = setInterval(() => {
       api.get<{ count: number }>("/notifications/unread-count")
         .then((res) => setUnreadCount(res.count))
         .catch(() => {});
-    }, 30000);
+    }, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -84,6 +86,12 @@ export default function Header({ title }: { title: string }) {
     await api.post(`/notifications/${id}/read`);
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
     setUnreadCount((c) => Math.max(0, c - 1));
+  };
+
+  const handleNotifClick = async (n: NotifType) => {
+    if (!n.is_read) await markRead(n.id);
+    setShowNotifs(false);
+    if (n.link) router.push(n.link);
   };
 
   const markAllRead = async () => {
@@ -145,7 +153,7 @@ export default function Header({ title }: { title: string }) {
                     return (
                       <div
                         key={n.id}
-                        onClick={() => !n.is_read && markRead(n.id)}
+                        onClick={() => handleNotifClick(n)}
                         className={`flex items-start gap-3 px-4 py-3 border-b border-gray-50 cursor-pointer transition-colors hover:bg-gray-50 ${
                           !n.is_read ? "bg-primary-50/30" : ""
                         }`}
