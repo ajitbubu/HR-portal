@@ -19,6 +19,7 @@ class AttendanceResponse(BaseModel):
     check_out: Any = None
     status: str
     hours_worked: float | None = None
+    late_minutes: int = 0
     notes: str | None = None
 
     @field_validator("check_in", "check_out", mode="before")
@@ -217,6 +218,7 @@ class DashboardStats(BaseModel):
     total_employees: int = 0
     active_employees: int = 0
     on_leave_today: int = 0
+    absent_today: int = 0
     pending_approvals: int = 0
     new_hires_this_month: int = 0
     upcoming_holidays: int = 0

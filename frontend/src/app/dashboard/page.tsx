@@ -63,10 +63,11 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         <StatsCard title="Total Employees" value={stats?.total_employees || 0} icon="users" color="indigo" />
         <StatsCard title="On Leave Today" value={stats?.on_leave_today || 0} icon="calendar" color="yellow" />
-        <StatsCard title="Pending Approvals" value={stats?.pending_approvals || 0} icon="clock" color="red" />
+        <StatsCard title="Absent Today" value={stats?.absent_today || 0} icon="clock" color="red" />
+        <StatsCard title="Pending Approvals" value={stats?.pending_approvals || 0} icon="check" color="purple" />
         <StatsCard title="New Hires" value={stats?.new_hires_this_month || 0} icon="sparkle" color="green" subtitle="This month" />
       </div>
 

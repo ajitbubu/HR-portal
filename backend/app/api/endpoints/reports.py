@@ -1,11 +1,13 @@
 import io
 import csv
+from datetime import date
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+from sqlalchemy import extract
 
 from app.core.database import get_db
-from app.core.dependencies import require_roles
+from app.core.dependencies import require_roles, get_current_user
 from app.models.user import User, Employee
 from app.models.leave import LeaveRequest, LeaveBalance
 from app.models.attendance import AttendanceRecord
@@ -54,18 +56,34 @@ def export_leave_summary(year: int = 2026, db: Session = Depends(get_db), _: Use
 
 
 @router.get("/attendance/csv")
-def export_attendance(month: int = 3, year: int = 2026, db: Session = Depends(get_db), _: User = Depends(require_roles("super_admin", "hr_admin"))):
-    from sqlalchemy import extract
-    records = db.query(AttendanceRecord).filter(
+def export_attendance(
+    month: int = 3,
+    year: int = 2026,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles("super_admin", "hr_admin", "manager")),
+):
+    q = db.query(AttendanceRecord).filter(
         extract("month", AttendanceRecord.date) == month,
         extract("year", AttendanceRecord.date) == year,
-    ).all()
+    )
+
+    # Managers only see their direct reports
+    if current_user.role == "manager":
+        emp = db.query(Employee).filter(Employee.user_id == current_user.id).first()
+        if emp:
+            direct_report_ids = [e.id for e in db.query(Employee).filter(Employee.manager_id == emp.id).all()]
+            q = q.filter(AttendanceRecord.employee_id.in_(direct_report_ids))
+
+    records = q.all()
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["Employee ID", "Date", "Check In", "Check Out", "Hours", "Status"])
+    writer.writerow(["Employee ID", "Name", "Date", "Check In", "Check Out", "Hours", "Late Minutes", "Status"])
     for r in records:
         writer.writerow([
-            r.employee.employee_id, r.date, r.check_in, r.check_out, r.hours_worked, r.status,
+            r.employee.employee_id,
+            f"{r.employee.first_name} {r.employee.last_name}",
+            r.date, r.check_in, r.check_out, r.hours_worked,
+            r.late_minutes or 0, r.status,
         ])
     output.seek(0)
     return StreamingResponse(
@@ -73,3 +91,40 @@ def export_attendance(month: int = 3, year: int = 2026, db: Session = Depends(ge
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=attendance.csv"},
     )
+
+
+@router.get("/attendance/summary")
+def attendance_summary(
+    month: int = 3,
+    year: int = 2026,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles("super_admin", "hr_admin", "manager")),
+):
+    """Returns daily attendance counts (present/late/absent) for chart rendering."""
+    q = db.query(AttendanceRecord).filter(
+        extract("month", AttendanceRecord.date) == month,
+        extract("year", AttendanceRecord.date) == year,
+    )
+
+    if current_user.role == "manager":
+        emp = db.query(Employee).filter(Employee.user_id == current_user.id).first()
+        if emp:
+            direct_ids = [e.id for e in db.query(Employee).filter(Employee.manager_id == emp.id).all()]
+            q = q.filter(AttendanceRecord.employee_id.in_(direct_ids))
+
+    records = q.all()
+
+    # Group by date
+    summary: dict[str, dict] = {}
+    for r in records:
+        d = str(r.date)
+        if d not in summary:
+            summary[d] = {"date": d, "present": 0, "late": 0, "absent": 0}
+        if r.status == "present":
+            summary[d]["present"] += 1
+            if (r.late_minutes or 0) > 0:
+                summary[d]["late"] += 1
+        elif r.status == "absent":
+            summary[d]["absent"] += 1
+
+    return sorted(summary.values(), key=lambda x: x["date"])

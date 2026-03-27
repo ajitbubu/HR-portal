@@ -7,7 +7,7 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.user import User, Employee
 from app.models.leave import LeaveRequest, LeaveApproval
-from app.models.attendance import Holiday, HolidayCalendar
+from app.models.attendance import Holiday, HolidayCalendar, AttendanceRecord
 from app.models.misc import Announcement, HRTicket
 from app.schemas.common import DashboardStats
 
@@ -48,10 +48,19 @@ def get_dashboard_stats(db: Session = Depends(get_db), current_user: User = Depe
     pending_tickets = db.query(HRTicket).filter(HRTicket.status.in_(["open", "in_progress"])).count()
     announcements = db.query(Announcement).filter(Announcement.is_active == True).count()
 
+    # Absentee: active employees who haven't checked in today (weekdays only, excluding those on leave)
+    absent_today = 0
+    if today.weekday() < 5:  # Mon-Fri only
+        checked_in_count = db.query(AttendanceRecord).filter(
+            AttendanceRecord.date == today,
+        ).count()
+        absent_today = max(0, active - checked_in_count - on_leave)
+
     return DashboardStats(
         total_employees=total,
         active_employees=active,
         on_leave_today=on_leave,
+        absent_today=absent_today,
         pending_approvals=pending,
         new_hires_this_month=new_hires,
         upcoming_holidays=upcoming_holidays,

@@ -161,6 +161,7 @@ export interface DashboardStats {
   total_employees: number;
   active_employees: number;
   on_leave_today: number;
+  absent_today: number;
   pending_approvals: number;
   new_hires_this_month: number;
   upcoming_holidays: number;
@@ -241,6 +242,7 @@ export interface AttendanceRecord {
   check_out?: string;
   status: string;
   hours_worked: number;
+  late_minutes?: number;
   notes?: string;
 }
 
