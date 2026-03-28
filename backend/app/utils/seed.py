@@ -139,7 +139,7 @@ def seed():
             (27, "DS00029", "Sudesna",         "Mishra",            "smishra@datasafeguard.ai",      "manager",     3,   0,   0,  8,    date(2025, 3, 1)),
             (28, "DS00030", "Debjani",         "Mohanty",           "dmohanty@datasafeguard.ai",     "hr_admin",    6,   4,   0,  8,    date(2025, 5, 1)),
             (29, "DS00031", "Rasmita",         "Swain",             "rswain@datasafeguard.ai",       "employee",    5,   0,   0,  27,   date(2025, 7, 1)),
-            (30, "DS00032", "Mousumi",         "Bhattacharya Dash", "mbhattacharyadash@datasafeguard.ai", "employee", 7, 0,   0,  2,    date(2025, 9, 1)),
+            (30, "DS00032", "Mousumi",         "Bhattacharya Dash", "sbh@datasafeguard.ai", "employee", 7, 0,   0,  2,    date(2025, 9, 1)),
             (31, "DS00033", "Shubham",         "Pattanayak",        "spattanayak@datasafeguard.ai",  "employee",    5,   0,   0,  0,    date(2025, 11, 1)),
             (32, "DS00034", "Swarnam",         "Dash",              "sdash@datasafeguard.ai",        "employee",    5,   0,   0,  0,    date(2026, 1, 1)),
             (33, "DS00035", "Ritu",            "Mehta",             "rmehta@datasafeguard.ai",       "employee",    5,   0,   0,  5,    date(2026, 3, 1)),
