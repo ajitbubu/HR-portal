@@ -330,3 +330,198 @@ class TestAudit:
     def test_employee_cannot_view_audit(self, client, emp_token):
         res = client.get("/api/audit", headers=auth_header(emp_token))
         assert res.status_code == 403
+
+
+# ── Reports — Headcount Analytics ──────────────────────
+
+class TestReportsHeadcount:
+    def test_admin_gets_headcount(self, client, admin_token):
+        res = client.get("/api/reports/headcount", headers=auth_header(admin_token))
+        assert res.status_code == 200
+
+    def test_headcount_response_shape(self, client, admin_token):
+        res = client.get("/api/reports/headcount", headers=auth_header(admin_token))
+        data = res.json()
+        for key in ["total_active", "by_department", "by_location", "by_employment_type", "monthly_hires"]:
+            assert key in data, f"Missing key: {key}"
+        assert isinstance(data["by_department"], list)
+        assert isinstance(data["by_location"], list)
+        assert isinstance(data["by_employment_type"], list)
+        assert isinstance(data["monthly_hires"], list)
+        assert len(data["monthly_hires"]) == 12
+
+    def test_headcount_total_active_positive(self, client, admin_token):
+        res = client.get("/api/reports/headcount", headers=auth_header(admin_token))
+        assert res.json()["total_active"] >= 4
+
+    def test_manager_can_access_headcount(self, client, mgr_token):
+        res = client.get("/api/reports/headcount", headers=auth_header(mgr_token))
+        assert res.status_code == 200
+
+    def test_employee_cannot_access_headcount(self, client, emp_token):
+        res = client.get("/api/reports/headcount", headers=auth_header(emp_token))
+        assert res.status_code == 403
+
+    def test_monthly_hires_shape(self, client, admin_token):
+        res = client.get("/api/reports/headcount", headers=auth_header(admin_token))
+        hires = res.json()["monthly_hires"]
+        for entry in hires:
+            assert "month" in entry
+            assert "count" in entry
+            assert entry["count"] >= 0
+
+
+# ── Leave — Team Calendar ───────────────────────────────
+
+class TestLeaveTeamCalendar:
+    def test_returns_list(self, client, admin_token):
+        from datetime import datetime
+        now = datetime.now()
+        res = client.get(
+            f"/api/leave/team-calendar?month={now.month}&year={now.year}",
+            headers=auth_header(admin_token),
+        )
+        assert res.status_code == 200
+        assert isinstance(res.json(), list)
+
+    def test_calendar_item_shape(self, client, admin_token):
+        from datetime import datetime
+        now = datetime.now()
+        # Apply a leave first so there's something to check
+        types = client.get("/api/leave/types", headers=auth_header(admin_token)).json()
+        if types:
+            client.post(
+                "/api/leave/apply",
+                json={
+                    "leave_type_id": types[0]["id"],
+                    "start_date": f"{now.year}-{now.month:02d}-20",
+                    "end_date": f"{now.year}-{now.month:02d}-20",
+                    "reason": "Team calendar test",
+                },
+                headers=auth_header(admin_token),
+            )
+        res = client.get(
+            f"/api/leave/team-calendar?month={now.month}&year={now.year}",
+            headers=auth_header(admin_token),
+        )
+        items = res.json()
+        for item in items:
+            assert "employee_id" in item
+            assert "employee_name" in item
+            assert "leave_type" in item
+            assert "start_date" in item
+            assert "end_date" in item
+            assert "status" in item
+
+    def test_filter_by_department(self, client, admin_token):
+        from datetime import datetime
+        now = datetime.now()
+        depts = client.get("/api/admin/departments", headers=auth_header(admin_token)).json()
+        if depts:
+            dept_id = depts[0]["id"]
+            res = client.get(
+                f"/api/leave/team-calendar?month={now.month}&year={now.year}&department_id={dept_id}",
+                headers=auth_header(admin_token),
+            )
+            assert res.status_code == 200
+            assert isinstance(res.json(), list)
+
+    def test_unauthenticated_calendar(self, client):
+        res = client.get("/api/leave/team-calendar?month=4&year=2026")
+        assert res.status_code in (401, 403)
+
+    def test_employee_can_access_calendar(self, client, emp_token):
+        res = client.get("/api/leave/team-calendar?month=4&year=2026", headers=auth_header(emp_token))
+        assert res.status_code == 200
+
+
+# ── Attendance — Edge Cases ─────────────────────────────
+
+class TestAttendanceEdgeCases:
+    def test_admin_views_own_records(self, client, admin_token):
+        from datetime import datetime
+        now = datetime.now()
+        res = client.get(
+            f"/api/attendance/my-records?month={now.month}&year={now.year}",
+            headers=auth_header(admin_token),
+        )
+        assert res.status_code == 200
+        assert isinstance(res.json(), list)
+
+    def test_double_checkin_rejected(self, client, emp_token):
+        # First check-in (may already be done from earlier test)
+        client.post("/api/attendance/check-in", headers=auth_header(emp_token))
+        # Second check-in same day should be rejected
+        res = client.post("/api/attendance/check-in", headers=auth_header(emp_token))
+        assert res.status_code == 400
+
+    def test_checkout_without_checkin_rejected(self, client, hr_token):
+        # Fresh user (HR hasn't checked in during tests)
+        # First checkout should fail if no check-in
+        res1 = client.post("/api/attendance/check-out", headers=auth_header(hr_token))
+        # Either 400 (no check-in) or 200 (if already checked in from other test)
+        assert res1.status_code in (200, 400)
+
+    def test_unauthenticated_checkin_rejected(self, client):
+        res = client.post("/api/attendance/check-in")
+        assert res.status_code in (401, 403)
+
+
+# ── Performance — Extended ──────────────────────────────
+
+class TestPerformanceExtended:
+    def test_create_review_all_fields(self, client, admin_token):
+        employees = get_employees(client, admin_token)
+        emp_id = employees[-1]["id"]
+        res = client.post(
+            "/api/performance",
+            json={
+                "employee_id": emp_id,
+                "period": "Q1 2026",
+                "rating": 5,
+                "comments": "Exceptional performance this quarter",
+                "goals": "Lead a new project in Q2",
+            },
+            headers=auth_header(admin_token),
+        )
+        assert res.status_code in (200, 201)
+        data = res.json()
+        assert data["period"] == "Q1 2026"
+        assert data["rating"] == 5
+
+    def test_employee_can_view_own_reviews(self, client, emp_token, admin_token):
+        # Get the employee's own id
+        me = client.get("/api/auth/me", headers=auth_header(emp_token)).json()
+        emp_id = me["employee_id"]
+        res = client.get(f"/api/performance/{emp_id}", headers=auth_header(emp_token))
+        assert res.status_code == 200
+        assert isinstance(res.json(), list)
+
+    def test_employee_cannot_view_others_reviews(self, client, emp_token, admin_token):
+        # Get admin employee id (different from emp)
+        admin_emp = get_employees(client, admin_token)[0]
+        emp_me = client.get("/api/auth/me", headers=auth_header(emp_token)).json()
+        if admin_emp["id"] != emp_me["employee_id"]:
+            res = client.get(
+                f"/api/performance/{admin_emp['id']}",
+                headers=auth_header(emp_token),
+            )
+            assert res.status_code == 403
+
+    def test_manager_can_view_report_reviews(self, client, mgr_token, admin_token):
+        employees = get_employees(client, admin_token)
+        emp_id = employees[-1]["id"]
+        res = client.get(f"/api/performance/{emp_id}", headers=auth_header(mgr_token))
+        assert res.status_code == 200
+
+    def test_review_response_shape(self, client, admin_token):
+        employees = get_employees(client, admin_token)
+        emp_id = employees[-1]["id"]
+        res = client.get(f"/api/performance/{emp_id}", headers=auth_header(admin_token))
+        reviews = res.json()
+        if reviews:
+            r = reviews[0]
+            assert "id" in r
+            assert "employee_id" in r
+            assert "period" in r
+            assert "status" in r

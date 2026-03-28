@@ -71,3 +71,52 @@ class TestMe:
     def test_get_me_invalid_token(self, client):
         res = client.get("/api/auth/me", headers=auth_header("invalid.token.here"))
         assert res.status_code in (401, 403)
+
+    def test_get_me_malformed_bearer(self, client):
+        res = client.get("/api/auth/me", headers={"Authorization": "NotBearer abc"})
+        assert res.status_code in (401, 403)
+
+
+class TestLoginTokenShape:
+    def test_token_response_has_required_fields(self, client):
+        res = client.post("/api/auth/login", json={"email": "admin@test.com", "password": "admin123"})
+        data = res.json()
+        assert "access_token" in data
+        assert "token_type" in data
+        assert "role" in data
+        assert "user_id" in data
+        assert data["token_type"] == "bearer"
+
+    def test_token_is_string(self, client):
+        res = client.post("/api/auth/login", json={"email": "admin@test.com", "password": "admin123"})
+        token = res.json()["access_token"]
+        assert isinstance(token, str)
+        # JWT tokens have 3 parts separated by dots
+        assert len(token.split(".")) == 3
+
+    def test_login_empty_body(self, client):
+        res = client.post("/api/auth/login", json={})
+        assert res.status_code == 422
+
+    def test_login_missing_password(self, client):
+        res = client.post("/api/auth/login", json={"email": "admin@test.com"})
+        assert res.status_code == 422
+
+    def test_login_missing_email(self, client):
+        res = client.post("/api/auth/login", json={"password": "admin123"})
+        assert res.status_code == 422
+
+
+class TestInactiveUser:
+    def test_inactive_user_cannot_login(self, client, db):
+        """Create an inactive user and verify they cannot log in."""
+        from app.models.user import User
+        from app.core.security import hash_password
+
+        u = User(email="inactive@test.com", password_hash=hash_password("pass123"),
+                 role="employee", is_active=False)
+        db.add(u)
+        db.commit()
+
+        res = client.post("/api/auth/login", json={"email": "inactive@test.com", "password": "pass123"})
+        assert res.status_code in (401, 403)

@@ -1,16 +1,17 @@
 import io
 import csv
-from datetime import date
+from datetime import date, timedelta
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import extract
+from sqlalchemy import extract, func
 
 from app.core.database import get_db
 from app.core.dependencies import require_roles, get_current_user
 from app.models.user import User, Employee
 from app.models.leave import LeaveRequest, LeaveBalance
 from app.models.attendance import AttendanceRecord
+from app.models.organization import Department, Location
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
 
@@ -128,3 +129,59 @@ def attendance_summary(
             summary[d]["absent"] += 1
 
     return sorted(summary.values(), key=lambda x: x["date"])
+
+
+@router.get("/headcount")
+def headcount_analytics(db: Session = Depends(get_db), _: User = Depends(require_roles("super_admin", "hr_admin", "manager"))):
+    """Returns headcount breakdown by department, location, employment type, and monthly new hires."""
+    active = db.query(Employee).filter(Employee.status == "active")
+
+    # By department
+    by_dept = (
+        db.query(Department.name, func.count(Employee.id))
+        .join(Employee, Employee.department_id == Department.id)
+        .filter(Employee.status == "active")
+        .group_by(Department.name)
+        .all()
+    )
+
+    # By location
+    by_loc = (
+        db.query(Location.name, func.count(Employee.id))
+        .join(Employee, Employee.location_id == Location.id)
+        .filter(Employee.status == "active")
+        .group_by(Location.name)
+        .all()
+    )
+
+    # By employment type
+    by_type = (
+        db.query(Employee.employment_type, func.count(Employee.id))
+        .filter(Employee.status == "active")
+        .group_by(Employee.employment_type)
+        .all()
+    )
+
+    # New hires by month (last 12 months)
+    today = date.today()
+    monthly_hires = []
+    for i in range(11, -1, -1):
+        # go back i months
+        m = (today.month - i - 1) % 12 + 1
+        y = today.year - ((today.month - i - 1) // 12 + (1 if (today.month - i - 1) < 0 else 0))
+        count = db.query(Employee).filter(
+            extract("month", Employee.joining_date) == m,
+            extract("year", Employee.joining_date) == y,
+        ).count()
+        monthly_hires.append({
+            "month": f"{['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1]} {y}",
+            "count": count,
+        })
+
+    return {
+        "total_active": active.count(),
+        "by_department": [{"name": r[0] or "Unassigned", "count": r[1]} for r in by_dept],
+        "by_location": [{"name": r[0] or "Unassigned", "count": r[1]} for r in by_loc],
+        "by_employment_type": [{"name": (r[0] or "unknown").replace("_", " ").title(), "count": r[1]} for r in by_type],
+        "monthly_hires": monthly_hires,
+    }
