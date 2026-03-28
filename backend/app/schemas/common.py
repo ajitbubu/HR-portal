@@ -233,6 +233,8 @@ class OrgChartNode(BaseModel):
     designation: str | None = None
     department: str | None = None
     profile_photo: str | None = None
+    email: str | None = None
+    location: str | None = None
     children: list["OrgChartNode"] = []
 
     class Config:

@@ -20,6 +20,8 @@ def build_tree(db: Session, manager_id: int | None) -> list[OrgChartNode]:
             designation=emp.designation.title if emp.designation else None,
             department=emp.department.name if emp.department else None,
             profile_photo=emp.profile_photo,
+            email=emp.email,
+            location=emp.location.name if emp.location else None,
             children=build_tree(db, emp.id),
         )
         nodes.append(node)

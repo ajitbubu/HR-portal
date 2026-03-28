@@ -27,7 +27,7 @@ export default function EmployeeDetailPage() {
   const { data: departments } = useApi<Department[]>("/admin/departments");
   const { data: locations } = useApi<Location[]>("/admin/locations");
   const { data: designations } = useApi<Designation[]>("/admin/designations");
-  const { data: allEmployees } = useApi<{ items: Employee[] }>("/employees?per_page=200");
+  const { data: allEmployees } = useApi<{ items: Employee[] }>("/employees?per_page=100");
   const { data: teams } = useApi<Team[]>("/admin/teams");
 
   const isHR = isRole("super_admin", "hr_admin");
@@ -158,8 +158,8 @@ export default function EmployeeDetailPage() {
               )}
             </div>
             <div className="pb-1">
-              <h2 className="text-xl font-bold text-gray-900">{emp.first_name} {emp.last_name}</h2>
-              <p className="text-gray-500 text-sm">{emp.designation?.title || "No Designation"} &middot; {emp.department?.name || "No Department"}</p>
+              <h2 className="text-xl font-bold text-white">{emp.first_name} {emp.last_name}</h2>
+              <p className="text-gray-900 text-sm">{emp.designation?.title || "No Designation"} &middot; {emp.department?.name || "No Department"}</p>
               <div className="flex items-center gap-2 mt-1.5">
                 <span className={`badge ${emp.status === "active" ? "badge-success" : "badge-gray"}`}>{emp.status}</span>
                 <span className="badge badge-info">{emp.employment_type?.replace("_", " ")}</span>

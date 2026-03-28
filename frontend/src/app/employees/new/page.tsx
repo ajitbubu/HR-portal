@@ -6,7 +6,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { api } from "@/lib/api";
 import { useApi } from "@/hooks/useApi";
 import { useAuth } from "@/lib/auth";
-import type { Department, Location, Designation } from "@/types";
+import type { Department, Location, Designation, EmployeeList } from "@/types";
 
 export default function NewEmployeePage() {
   const { isRole, loading: authLoading } = useAuth();
@@ -15,6 +15,7 @@ export default function NewEmployeePage() {
   const { data: departments } = useApi<Department[]>("/admin/departments");
   const { data: locations } = useApi<Location[]>("/admin/locations");
   const { data: designations } = useApi<Designation[]>("/admin/designations");
+  const { data: allEmployees } = useApi<EmployeeList>("/employees?per_page=100");
 
   useEffect(() => {
     if (!authLoading && !isRole("super_admin", "hr_admin")) {
@@ -26,7 +27,7 @@ export default function NewEmployeePage() {
 
   const [form, setForm] = useState({
     first_name: "", last_name: "", email: "", phone: "",
-    department_id: "", designation_id: "", location_id: "",
+    department_id: "", designation_id: "", location_id: "", manager_id: "",
     employment_type: "full_time", joining_date: "", password: "changeme123",
   });
   const [error, setError] = useState("");
@@ -42,6 +43,7 @@ export default function NewEmployeePage() {
         department_id: form.department_id ? parseInt(form.department_id) : null,
         designation_id: form.designation_id ? parseInt(form.designation_id) : null,
         location_id: form.location_id ? parseInt(form.location_id) : null,
+        manager_id: form.manager_id ? parseInt(form.manager_id) : null,
       };
       await api.post("/employees", payload);
       router.push("/employees");
@@ -107,6 +109,18 @@ export default function NewEmployeePage() {
                 {locations?.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
               </select>
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Manager</label>
+              <select value={form.manager_id} onChange={(e) => update("manager_id", e.target.value)} className="input-field">
+                <option value="">None</option>
+                {allEmployees?.items?.map((e) => (
+                  <option key={e.id} value={e.id}>{e.first_name} {e.last_name} — {e.employee_id}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Employment Type</label>
               <select value={form.employment_type} onChange={(e) => update("employment_type", e.target.value)} className="input-field">

@@ -186,6 +186,8 @@ export interface OrgChartNode {
   designation?: string;
   department?: string;
   profile_photo?: string;
+  email?: string;
+  location?: string;
   children: OrgChartNode[];
 }
 

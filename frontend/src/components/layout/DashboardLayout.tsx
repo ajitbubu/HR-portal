@@ -31,9 +31,10 @@ function Layout({ children, title }: { children: React.ReactNode; title: string 
   return (
     <div className="min-h-screen bg-gray-50">
       <Sidebar />
-      <div className={`transition-all duration-300 ${collapsed ? "ml-16" : "ml-64"}`}>
+      {/* Mobile: no left margin. Desktop: margin matches sidebar width */}
+      <div className={`transition-all duration-300 md:${collapsed ? "ml-16" : "ml-60"}`}>
         <Header title={title} />
-        <main className="p-6">{children}</main>
+        <main className="p-4 md:p-6">{children}</main>
       </div>
     </div>
   );

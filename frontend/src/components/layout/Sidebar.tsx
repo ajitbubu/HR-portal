@@ -156,7 +156,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http:/
 export default function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
-  const { collapsed, setCollapsed } = useSidebar();
+  const { collapsed, setCollapsed, mobileOpen, setMobileOpen } = useSidebar();
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
 
   useEffect(() => {
@@ -167,13 +167,26 @@ export default function Sidebar() {
     }
   }, [user?.employee_id]);
 
+  // Close mobile sidebar on route change
+  useEffect(() => { setMobileOpen(false); }, [pathname, setMobileOpen]);
+
   if (!user) return null;
 
   return (
+    <>
+      {/* Mobile backdrop overlay */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-20 md:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
     <aside
-      className={`fixed left-0 top-0 h-screen flex flex-col z-30 bg-slate-900 border-r border-slate-700/50 transition-all duration-300 ${
-        collapsed ? "w-16" : "w-60"
-      }`}
+      className={`fixed left-0 top-0 h-screen flex flex-col z-30 bg-slate-900 border-r border-slate-700/50 transition-all duration-300
+        ${collapsed ? "md:w-16" : "md:w-60"}
+        w-60
+        ${mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
+      `}
     >
       {/* Logo */}
       <div className={`flex items-center h-14 border-b border-slate-700/50 px-3 ${collapsed ? "justify-center" : ""}`}>
@@ -239,5 +252,6 @@ export default function Sidebar() {
         </button>
       </div>
     </aside>
+    </>
   );
 }
