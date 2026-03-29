@@ -83,6 +83,23 @@ class PerformanceReview(Base):
     reviewer = relationship("Employee", foreign_keys=[reviewer_id])
 
 
+class DelegationSetting(Base):
+    """Stores an active out-of-office delegation for an approver."""
+    __tablename__ = "delegation_settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    delegator_id = Column(Integer, ForeignKey("employees.id"), nullable=False)   # manager going OOO
+    delegate_id  = Column(Integer, ForeignKey("employees.id"), nullable=False)   # person covering
+    start_date   = Column(Date, nullable=False)
+    end_date     = Column(Date, nullable=False)
+    reason       = Column(String(255))
+    is_active    = Column(Boolean, default=True)
+    created_at   = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    delegator = relationship("Employee", foreign_keys=[delegator_id])
+    delegate  = relationship("Employee", foreign_keys=[delegate_id])
+
+
 class HRTicket(Base):
     __tablename__ = "hr_tickets"
 

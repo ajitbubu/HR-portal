@@ -9,7 +9,7 @@ from app.api.endpoints import (
     auth, employees, leave, approvals, admin, salary,
     attendance, documents, notifications, dashboard,
     org_chart, announcements, audit, reports, onboarding,
-    holidays, hr_tickets, performance,
+    holidays, hr_tickets, performance, delegations,
 )
 
 # Create tables
@@ -40,7 +40,7 @@ for router in [
     notifications.router, dashboard.router, org_chart.router,
     announcements.router, audit.router, reports.router,
     onboarding.router, holidays.router, hr_tickets.router,
-    performance.router,
+    performance.router, delegations.router,
 ]:
     app.include_router(router, prefix="/api")
 
