@@ -16,6 +16,7 @@ from app.models.attendance import HolidayCalendar, Holiday
 from app.models.notification import Notification
 from app.models.audit import AuditLog
 from app.models.misc import Announcement, CompanySetting, OnboardingTask
+from app.models.resignation import ResignationRequest, ResignationActionLog
 
 
 def seed():
@@ -109,12 +110,12 @@ def seed():
         #      4=Bangalore,IND    5=Hyderabad,IND  6=SantaClara,CA  7=NewYorkCity,USA  8=Other
         emp_data = [
             # idx  emp_id      first           last                email                            role          desig loc dept mgr  joining
-            (0,  "DS00001", "Sudhir",          "Sahu",              "sudhir@datasafeguard.ai",       "super_admin", 0,   6,   9,  None, date(2020, 1, 1)),
-            (1,  "DS00002", "Lee",             "Nocon",             "lnocon@datasafeguard.ai",       "manager",     1,   6,   9,  0,    date(2020, 6, 1)),
-            (2,  "DS00003", "Mahi",            "Gupta",             "mgupta@datasafeguard.ai",       "employee",    1,   6,   9,  0,    date(2021, 1, 1)),
-            (3,  "DS00004", "Pranab",          "Mohanty",           "pmohanty@datasafeguard.ai",     "employee",    1,   6,   9,  0,    date(2021, 3, 1)),
-            (4,  "DS00005", "Tedra",           "Chen",              "tchen@datasafeguard.ai",        "employee",    1,   6,   9,  0,    date(2021, 5, 1)),
-            (5,  "DS00006", "Tirthankar",      "Mitra",             "tmitra@datasafeguard.ai",       "employee",    1,   6,   9,  0,    date(2021, 7, 1)),
+            (0,  "DS00001", "Sudhir",          "Sahu",              "sudhir@datasafeguard.ai",       "super_admin", 0,   9,   6,  None, date(2020, 1, 1)),
+            (1,  "DS00002", "Lee",             "Nocon",             "lnocon@datasafeguard.ai",       "manager",     1,   9,   6,  0,    date(2020, 6, 1)),
+            (2,  "DS00003", "Mahi",            "Gupta",             "mgupta@datasafeguard.ai",       "employee",    1,   9,   6,  0,    date(2021, 1, 1)),
+            (3,  "DS00004", "Pranab",          "Mohanty",           "pmohanty@datasafeguard.ai",     "employee",    1,   9,   6,  0,    date(2021, 3, 1)),
+            (4,  "DS00005", "Tedra",           "Chen",              "tchen@datasafeguard.ai",        "employee",    1,   9,   6,  0,    date(2021, 5, 1)),
+            (5,  "DS00006", "Tirthankar",      "Mitra",             "tmitra@datasafeguard.ai",       "employee",    1,   9,   6,  0,    date(2021, 7, 1)),
             (6,  "DS00007", "Ajit",            "Sahu",              "asahu@datasafeguard.ai",        "manager",     3,   0,   0,  1,    date(2021, 9, 1)),
             (7,  "DS00008", "Sumeet",          "Shah",              "sshah@datasafeguard.ai",        "manager",     3,   0,   0,  1,    date(2021, 11, 1)),
             (8,  "DS00009", "Ashis",           "Rout",              "arout@datasafeguard.ai",        "manager",     3,   0,   0,  1,    date(2022, 1, 1)),

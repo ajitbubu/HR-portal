@@ -218,6 +218,50 @@ export interface Holiday {
   is_optional: boolean;
 }
 
+export interface ResignationActionLog {
+  id: number;
+  actor_id?: number;
+  action: string;
+  comments?: string;
+  old_status?: string;
+  new_status?: string;
+  created_at?: string;
+}
+
+export interface ResignationRequest {
+  id: number;
+  employee_id: number;
+  employee_name?: string;
+  employee_code?: string;
+  manager_name?: string;
+  department_name?: string;
+  location_name?: string;
+  country?: string;
+  resignation_date: string;
+  notice_period_days: number;
+  is_mandatory: boolean;
+  is_india_based: boolean;
+  expected_last_day: string;
+  actual_last_day?: string;
+  reason?: string;
+  status: string;
+  manager_action?: string;
+  manager_action_date?: string;
+  manager_comments?: string;
+  hr_notes?: string;
+  created_at?: string;
+  updated_at?: string;
+  action_logs?: ResignationActionLog[];
+}
+
+export interface NoticePeriodPreview {
+  notice_period_days: number;
+  is_mandatory: boolean;
+  is_india_based: boolean;
+  resignation_date: string;
+  expected_last_day: string;
+}
+
 export interface Workflow {
   id: number;
   name: string;

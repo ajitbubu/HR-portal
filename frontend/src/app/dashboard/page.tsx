@@ -77,6 +77,11 @@ const priorityStyle: Record<string, string> = {
 export default function DashboardPage() {
   const { user } = useAuth();
   const { data: stats } = useApi<DashboardStats>("/dashboard/stats");
+
+  const canViewOrgStats =
+    user?.role === "super_admin" ||
+    user?.role === "hr_admin" ||
+    user?.name === "Debjani Mohanty";
   const { data: announcements } = useApi<Announcement[]>("/announcements");
   const { data: recentLeave } = useApi<LeaveRequest[]>("/leave/my-requests");
   const { data: celebrations } = useApi<Celebration[]>("/dashboard/celebrations?days=30");
@@ -103,13 +108,15 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-        <StatsCard title="Total Employees" value={stats?.total_employees || 0} icon="users" color="indigo" />
-        <StatsCard title="On Leave Today" value={stats?.on_leave_today || 0} icon="calendar" color="yellow" />
-        <StatsCard title="Absent Today" value={stats?.absent_today || 0} icon="clock" color="red" />
-        <StatsCard title="Pending Approvals" value={stats?.pending_approvals || 0} icon="check" color="purple" />
-        <StatsCard title="New Hires" value={stats?.new_hires_this_month || 0} icon="sparkle" color="green" subtitle="This month" />
-      </div>
+      {canViewOrgStats && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+          <StatsCard title="Total Employees" value={stats?.total_employees || 0} icon="users" color="indigo" />
+          <StatsCard title="On Leave Today" value={stats?.on_leave_today || 0} icon="calendar" color="yellow" />
+          <StatsCard title="Absent Today" value={stats?.absent_today || 0} icon="clock" color="red" />
+          <StatsCard title="Pending Approvals" value={stats?.pending_approvals || 0} icon="check" color="purple" />
+          <StatsCard title="New Hires" value={stats?.new_hires_this_month || 0} icon="sparkle" color="green" subtitle="This month" />
+        </div>
+      )}
 
       {/* Quick Actions */}
       <div className="card mb-6">
