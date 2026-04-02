@@ -305,6 +305,204 @@ export interface HRTicket {
   created_at?: string;
 }
 
+// --- Timesheet & Projects ---
+export interface Project {
+  id: number;
+  name: string;
+  code: string;
+  client?: string;
+  description?: string;
+  status: string;
+  start_date?: string;
+  end_date?: string;
+  budget_hours: number;
+  manager_id?: number;
+  department_id?: number;
+  is_billable: boolean;
+  created_at?: string;
+}
+
+export interface ProjectList {
+  items: Project[];
+  total: number;
+  page: number;
+  per_page: number;
+}
+
+export interface TimesheetEntry {
+  id: number;
+  employee_id: number;
+  project_id: number;
+  date: string;
+  hours: number;
+  description?: string;
+  is_billable: boolean;
+  is_overtime: boolean;
+  status: string;
+  created_at?: string;
+}
+
+export interface WeeklyTimesheet {
+  id: number;
+  employee_id: number;
+  week_start: string;
+  week_end: string;
+  total_hours: number;
+  overtime_hours: number;
+  status: string;
+  submitted_at?: string;
+  comments?: string;
+  created_at?: string;
+}
+
+// --- Recruitment ---
+export interface JobPosting {
+  id: number;
+  title: string;
+  department_id?: number;
+  location_id?: number;
+  description?: string;
+  requirements?: string;
+  salary_min?: number;
+  salary_max?: number;
+  salary_currency: string;
+  employment_type: string;
+  status: string;
+  positions_count: number;
+  posted_at?: string;
+  closes_at?: string;
+  created_at?: string;
+}
+
+export interface Candidate {
+  id: number;
+  job_posting_id: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone?: string;
+  resume_path?: string;
+  source?: string;
+  status: string;
+  notes?: string;
+  rating?: number;
+  created_at?: string;
+}
+
+export interface Interview {
+  id: number;
+  candidate_id: number;
+  interviewer_id: number;
+  scheduled_at: string;
+  duration_minutes: number;
+  interview_type: string;
+  location?: string;
+  meeting_link?: string;
+  feedback?: string;
+  rating?: number;
+  status: string;
+  created_at?: string;
+}
+
+export interface OfferLetter {
+  id: number;
+  candidate_id: number;
+  position_title: string;
+  salary: number;
+  salary_currency: string;
+  start_date?: string;
+  expiry_date?: string;
+  status: string;
+  terms?: string;
+  created_at?: string;
+}
+
+// --- Training ---
+export interface Course {
+  id: number;
+  title: string;
+  description?: string;
+  category?: string;
+  duration_hours: number;
+  format: string;
+  instructor?: string;
+  max_participants: number;
+  is_mandatory: boolean;
+  is_active: boolean;
+  created_at?: string;
+}
+
+export interface Enrollment {
+  id: number;
+  employee_id: number;
+  course_id: number;
+  status: string;
+  enrolled_at?: string;
+  completed_at?: string;
+  score?: number;
+  progress: number;
+  created_at?: string;
+}
+
+export interface Certification {
+  id: number;
+  name: string;
+  issuing_body?: string;
+  description?: string;
+  validity_months: number;
+  created_at?: string;
+}
+
+export interface LearningPath {
+  id: number;
+  name: string;
+  description?: string;
+  target_role?: string;
+  is_active: boolean;
+  courses: { id: number; course_id: number; sequence_order: number; is_required: boolean }[];
+  created_at?: string;
+}
+
+// --- Expenses ---
+export interface ExpenseCategory {
+  id: number;
+  name: string;
+  code: string;
+  description?: string;
+  max_amount: number;
+  requires_receipt: boolean;
+  is_active: boolean;
+}
+
+export interface ExpenseClaim {
+  id: number;
+  employee_id: number;
+  title: string;
+  description?: string;
+  total_amount: number;
+  currency: string;
+  status: string;
+  submitted_at?: string;
+  approved_at?: string;
+  reimbursed_at?: string;
+  reimbursement_amount: number;
+  rejection_reason?: string;
+  items: ExpenseItem[];
+  created_at?: string;
+}
+
+export interface ExpenseItem {
+  id: number;
+  claim_id: number;
+  category_id: number;
+  amount: number;
+  date: string;
+  description?: string;
+  receipt_path?: string;
+  is_billable: boolean;
+  project_id?: number;
+}
+
 export interface TokenResponse {
   access_token: string;
   token_type: string;

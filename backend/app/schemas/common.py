@@ -1,6 +1,6 @@
 from datetime import date, datetime, time
 from typing import Any
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class AttendanceCreate(BaseModel):
@@ -12,6 +12,8 @@ class AttendanceCreate(BaseModel):
 
 
 class AttendanceResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     employee_id: int
     date: date
@@ -31,9 +33,6 @@ class AttendanceResponse(BaseModel):
             return v.isoformat()
         return str(v)
 
-    class Config:
-        from_attributes = True
-
 
 class HolidayCalendarCreate(BaseModel):
     name: str
@@ -49,27 +48,27 @@ class HolidayCreate(BaseModel):
 
 
 class HolidayResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     date: date
     is_optional: bool
 
-    class Config:
-        from_attributes = True
-
 
 class HolidayCalendarResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     year: int
     location_id: int | None = None
     holidays: list[HolidayResponse] = []
 
-    class Config:
-        from_attributes = True
-
 
 class DocumentResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     employee_id: int
     name: str
@@ -79,11 +78,10 @@ class DocumentResponse(BaseModel):
     description: str | None = None
     created_at: datetime | None = None
 
-    class Config:
-        from_attributes = True
-
 
 class NotificationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     title: str
     message: str
@@ -91,9 +89,6 @@ class NotificationResponse(BaseModel):
     is_read: bool
     link: str | None = None
     created_at: datetime | None = None
-
-    class Config:
-        from_attributes = True
 
 
 class AnnouncementCreate(BaseModel):
@@ -103,6 +98,8 @@ class AnnouncementCreate(BaseModel):
 
 
 class AnnouncementResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     title: str
     content: str
@@ -111,11 +108,10 @@ class AnnouncementResponse(BaseModel):
     is_active: bool
     created_at: datetime | None = None
 
-    class Config:
-        from_attributes = True
-
 
 class AuditLogResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     user_id: int | None = None
     action: str
@@ -126,9 +122,6 @@ class AuditLogResponse(BaseModel):
     ip_address: str | None = None
     created_at: datetime | None = None
 
-    class Config:
-        from_attributes = True
-
 
 class CompanySettingUpdate(BaseModel):
     key: str
@@ -138,14 +131,13 @@ class CompanySettingUpdate(BaseModel):
 
 
 class CompanySettingResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     key: str
     value: str | None = None
     category: str | None = None
     description: str | None = None
-
-    class Config:
-        from_attributes = True
 
 
 class OnboardingTaskCreate(BaseModel):
@@ -157,6 +149,8 @@ class OnboardingTaskCreate(BaseModel):
 
 
 class TaskResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     employee_id: int
     title: str
@@ -164,9 +158,6 @@ class TaskResponse(BaseModel):
     assigned_to_id: int | None = None
     status: str
     due_date: date | None = None
-
-    class Config:
-        from_attributes = True
 
 
 class HRTicketCreate(BaseModel):
@@ -177,6 +168,8 @@ class HRTicketCreate(BaseModel):
 
 
 class HRTicketResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     employee_id: int
     subject: str
@@ -188,9 +181,6 @@ class HRTicketResponse(BaseModel):
     resolution: str | None = None
     created_at: datetime | None = None
 
-    class Config:
-        from_attributes = True
-
 
 class PerformanceReviewCreate(BaseModel):
     employee_id: int
@@ -201,6 +191,8 @@ class PerformanceReviewCreate(BaseModel):
 
 
 class PerformanceReviewResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     employee_id: int
     reviewer_id: int
@@ -209,9 +201,6 @@ class PerformanceReviewResponse(BaseModel):
     rating: float | None = None
     comments: str | None = None
     created_at: datetime | None = None
-
-    class Config:
-        from_attributes = True
 
 
 class DashboardStats(BaseModel):
@@ -227,6 +216,8 @@ class DashboardStats(BaseModel):
 
 
 class OrgChartNode(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     employee_id: str
     name: str
@@ -236,6 +227,3 @@ class OrgChartNode(BaseModel):
     email: str | None = None
     location: str | None = None
     children: list["OrgChartNode"] = []
-
-    class Config:
-        from_attributes = True

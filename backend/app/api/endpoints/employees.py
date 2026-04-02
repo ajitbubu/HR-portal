@@ -220,8 +220,11 @@ async def upload_profile_photo(
     if len(content) > 5 * 1024 * 1024:  # 5MB limit for photos
         raise HTTPException(status_code=400, detail="File size must be under 5MB")
 
-    # Save file
-    ext = file.filename.rsplit(".", 1)[-1] if "." in file.filename else "jpg"
+    # Save file with sanitized extension
+    safe_name = os.path.basename(file.filename or "photo.jpg")
+    ext = safe_name.rsplit(".", 1)[-1].lower() if "." in safe_name else "jpg"
+    if ext not in ("jpg", "jpeg", "png", "webp", "gif"):
+        ext = "jpg"
     filename = f"{uuid.uuid4().hex}.{ext}"
     upload_dir = os.path.join(settings.UPLOAD_DIR, "profile-photos")
     os.makedirs(upload_dir, exist_ok=True)
@@ -264,7 +267,10 @@ async def upload_employee_photo(
     if len(content) > 5 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="File size must be under 5MB")
 
-    ext = file.filename.rsplit(".", 1)[-1] if "." in file.filename else "jpg"
+    safe_name = os.path.basename(file.filename or "photo.jpg")
+    ext = safe_name.rsplit(".", 1)[-1].lower() if "." in safe_name else "jpg"
+    if ext not in ("jpg", "jpeg", "png", "webp", "gif"):
+        ext = "jpg"
     filename = f"{uuid.uuid4().hex}.{ext}"
     upload_dir = os.path.join(settings.UPLOAD_DIR, "profile-photos")
     os.makedirs(upload_dir, exist_ok=True)

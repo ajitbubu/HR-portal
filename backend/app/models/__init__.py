@@ -11,6 +11,13 @@ from app.models.misc import (
     Announcement, OnboardingTask, OffboardingTask,
     CompanySetting, PerformanceReview, HRTicket,
 )
+from app.models.timesheet import Project, ProjectMember, TimesheetEntry, WeeklyTimesheet
+from app.models.recruitment import JobPosting, Candidate, Interview, OfferLetter
+from app.models.training import (
+    Course, Enrollment, Certification, EmployeeCertification,
+    LearningPath, LearningPathCourse, ComplianceAssignment,
+)
+from app.models.expense import ExpenseCategory, ExpenseClaim, ExpenseItem
 
 __all__ = [
     "User", "Employee",
@@ -22,4 +29,9 @@ __all__ = [
     "Document", "Notification", "AuditLog",
     "Announcement", "OnboardingTask", "OffboardingTask",
     "CompanySetting", "PerformanceReview", "HRTicket",
+    "Project", "ProjectMember", "TimesheetEntry", "WeeklyTimesheet",
+    "JobPosting", "Candidate", "Interview", "OfferLetter",
+    "Course", "Enrollment", "Certification", "EmployeeCertification",
+    "LearningPath", "LearningPathCourse", "ComplianceAssignment",
+    "ExpenseCategory", "ExpenseClaim", "ExpenseItem",
 ]

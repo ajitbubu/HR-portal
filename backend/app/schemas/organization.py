@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class BusinessUnitCreate(BaseModel):
@@ -7,12 +7,11 @@ class BusinessUnitCreate(BaseModel):
 
 
 class BusinessUnitResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     description: str | None = None
-
-    class Config:
-        from_attributes = True
 
 
 class DepartmentCreate(BaseModel):
@@ -24,15 +23,14 @@ class DepartmentCreate(BaseModel):
 
 
 class DepartmentResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     code: str | None = None
     business_unit_id: int | None = None
     head_id: int | None = None
     description: str | None = None
-
-    class Config:
-        from_attributes = True
 
 
 class TeamCreate(BaseModel):
@@ -42,13 +40,12 @@ class TeamCreate(BaseModel):
 
 
 class TeamResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     department_id: int
     lead_id: int | None = None
-
-    class Config:
-        from_attributes = True
 
 
 class LocationCreate(BaseModel):
@@ -61,15 +58,14 @@ class LocationCreate(BaseModel):
 
 
 class LocationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     address: str | None = None
     city: str | None = None
     state: str | None = None
     country: str | None = None
-
-    class Config:
-        from_attributes = True
 
 
 class DesignationCreate(BaseModel):
@@ -80,10 +76,9 @@ class DesignationCreate(BaseModel):
 
 
 class DesignationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     title: str
     level: int
     band: str | None = None
-
-    class Config:
-        from_attributes = True

@@ -1,6 +1,11 @@
+import warnings
 from datetime import datetime, timedelta, timezone
 
 from jose import jwt, JWTError
+
+# Suppress passlib's internal crypt deprecation warning
+warnings.filterwarnings("ignore", message=".*'crypt' is deprecated.*")
+warnings.filterwarnings("ignore", message=".*crypt module is deprecated.*")
 from passlib.context import CryptContext
 
 from app.core.config import settings

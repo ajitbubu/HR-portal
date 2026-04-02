@@ -86,7 +86,7 @@ class Employee(Base):
     location = relationship("Location", back_populates="employees")
     team = relationship("Team", foreign_keys=[team_id])
     manager = relationship("Employee", remote_side="Employee.id", foreign_keys=[manager_id])
-    subordinates = relationship("Employee", foreign_keys=[manager_id])
+    subordinates = relationship("Employee", foreign_keys=[manager_id], overlaps="manager")
 
     leave_requests = relationship("LeaveRequest", back_populates="employee")
     leave_balances = relationship("LeaveBalance", back_populates="employee")

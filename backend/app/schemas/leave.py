@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class LeaveTypeCreate(BaseModel):
@@ -16,6 +16,8 @@ class LeaveTypeCreate(BaseModel):
 
 
 class LeaveTypeResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     code: str
@@ -25,9 +27,6 @@ class LeaveTypeResponse(BaseModel):
     max_carry_forward_days: float
     requires_document: bool
     is_active: bool
-
-    class Config:
-        from_attributes = True
 
 
 class LeavePolicyCreate(BaseModel):
@@ -46,6 +45,8 @@ class LeavePolicyCreate(BaseModel):
 
 
 class LeavePolicyResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     leave_type_id: int
@@ -55,9 +56,6 @@ class LeavePolicyResponse(BaseModel):
     allow_half_day: bool
     allow_negative_balance: bool
     is_active: bool
-
-    class Config:
-        from_attributes = True
 
 
 class LeaveApplyRequest(BaseModel):
@@ -70,6 +68,8 @@ class LeaveApplyRequest(BaseModel):
 
 
 class LeaveRequestResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     employee_id: int
     employee_name: str | None = None
@@ -86,11 +86,10 @@ class LeaveRequestResponse(BaseModel):
     created_at: datetime | None = None
     approvals: list["LeaveApprovalResponse"] = []
 
-    class Config:
-        from_attributes = True
-
 
 class LeaveBalanceResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     leave_type: LeaveTypeResponse
     year: int
@@ -100,9 +99,6 @@ class LeaveBalanceResponse(BaseModel):
     carried_forward: float
     adjusted: float
     remaining: float
-
-    class Config:
-        from_attributes = True
 
 
 class LeaveBalanceAdjust(BaseModel):
@@ -122,6 +118,8 @@ class LeaveBalanceCheckResponse(BaseModel):
 
 
 class LeaveApprovalResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     approver_id: int
     approver_name: str | None = None
@@ -129,9 +127,6 @@ class LeaveApprovalResponse(BaseModel):
     status: str
     comments: str | None = None
     acted_at: datetime | None = None
-
-    class Config:
-        from_attributes = True
 
 
 class ApprovalActionRequest(BaseModel):

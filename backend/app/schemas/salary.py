@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class SalaryCreate(BaseModel):
@@ -14,6 +14,8 @@ class SalaryCreate(BaseModel):
 
 
 class SalaryResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     employee_id: int
     effective_date: date
@@ -26,6 +28,3 @@ class SalaryResponse(BaseModel):
     reason: str | None = None
     changed_by_id: int | None = None
     created_at: datetime | None = None
-
-    class Config:
-        from_attributes = True

@@ -1,7 +1,9 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env")
+
     APP_NAME: str = "DataSafeguard HR"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = True
@@ -18,9 +20,6 @@ class Settings(BaseSettings):
     MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024  # 10MB
     WORK_START_HOUR: int = 9
     WORK_START_MINUTE: int = 0
-
-    class Config:
-        env_file = ".env"
 
 
 settings = Settings()

@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr
 
 
 class EmployeeCreate(BaseModel):
@@ -52,39 +52,35 @@ class EmployeeUpdate(BaseModel):
 
 
 class DepartmentInfo(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
 
-    class Config:
-        from_attributes = True
-
 
 class DesignationInfo(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     title: str
     band: str | None = None
 
-    class Config:
-        from_attributes = True
-
 
 class LocationInfo(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     city: str | None = None
 
-    class Config:
-        from_attributes = True
-
 
 class ManagerInfo(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     first_name: str
     last_name: str
     employee_id: str
-
-    class Config:
-        from_attributes = True
 
 
 class TeamInfo(BaseModel):
@@ -96,6 +92,8 @@ class TeamInfo(BaseModel):
 
 
 class EmployeeResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     employee_id: str
     first_name: str
@@ -121,9 +119,6 @@ class EmployeeResponse(BaseModel):
     joining_date: date
     profile_photo: str | None = None
     created_at: datetime | None = None
-
-    class Config:
-        from_attributes = True
 
 
 class EmployeeListResponse(BaseModel):
