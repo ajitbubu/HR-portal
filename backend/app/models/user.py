@@ -68,6 +68,7 @@ class Employee(Base):
     designation_id = Column(Integer, ForeignKey("designations.id"))
     location_id = Column(Integer, ForeignKey("locations.id"))
     manager_id = Column(Integer, ForeignKey("employees.id"), nullable=True)
+    team_id = Column(Integer, ForeignKey("teams.id"), nullable=True)
     band = Column(String(10))
 
     employment_type = Column(String(20), default=EmploymentType.FULL_TIME.value)
@@ -83,6 +84,7 @@ class Employee(Base):
     department = relationship("Department", back_populates="employees", foreign_keys=[department_id])
     designation = relationship("Designation", back_populates="employees")
     location = relationship("Location", back_populates="employees")
+    team = relationship("Team", foreign_keys=[team_id])
     manager = relationship("Employee", remote_side="Employee.id", foreign_keys=[manager_id])
     subordinates = relationship("Employee", foreign_keys=[manager_id], overlaps="manager")
 
@@ -91,3 +93,4 @@ class Employee(Base):
     salary_history = relationship("SalaryHistory", back_populates="employee", foreign_keys="SalaryHistory.employee_id")
     attendance_records = relationship("AttendanceRecord", back_populates="employee")
     documents = relationship("Document", back_populates="employee", foreign_keys="Document.employee_id")
+    resignation_requests = relationship("ResignationRequest", foreign_keys="ResignationRequest.employee_id", back_populates="employee")

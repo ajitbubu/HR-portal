@@ -9,8 +9,8 @@ from app.api.endpoints import (
     auth, employees, leave, approvals, admin, salary,
     attendance, documents, notifications, dashboard,
     org_chart, announcements, audit, reports, onboarding,
-    holidays, hr_tickets, performance,
     timesheets, recruitment, training, expenses,
+    holidays, hr_tickets, performance, delegations, resignation,
 )
 
 # Create tables
@@ -24,8 +24,8 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -41,9 +41,9 @@ for router in [
     notifications.router, dashboard.router, org_chart.router,
     announcements.router, audit.router, reports.router,
     onboarding.router, holidays.router, hr_tickets.router,
-    performance.router,
     timesheets.router, recruitment.router,
     training.router, expenses.router,
+    performance.router, delegations.router, resignation.router,
 ]:
     app.include_router(router, prefix="/api")
 

@@ -15,7 +15,7 @@ from app.services.leave_service import (
 )
 from app.services.approval_service import create_approval_chain
 from app.services.audit_service import log_audit
-from app.services.notification_service import create_notification
+from app.services.notification_service import create_notification, notify_leave_chain
 
 router = APIRouter(prefix="/leave", tags=["Leave Management"])
 
@@ -61,6 +61,7 @@ def apply_leave(
 
     update_leave_balance_on_apply(db, emp.id, req.leave_type_id, total_days, req.start_date.year)
     create_approval_chain(db, leave_req, emp)
+    notify_leave_chain(db, leave_req, emp)
 
     log_audit(db, current_user.id, "create", "leave_request", leave_req.id)
     db.refresh(leave_req)
@@ -219,3 +220,49 @@ def cancel_leave(
 
     log_audit(db, current_user.id, "cancel", "leave_request", lr.id)
     return {"message": "Leave request cancelled"}
+
+
+@router.get("/team-calendar")
+def team_calendar(
+    month: int = Query(default=None),
+    year: int = Query(default=None),
+    department_id: int = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Returns approved/pending leave requests for the whole org (or dept filter) for a given month."""
+    from datetime import date
+    from sqlalchemy import extract as sa_extract
+    today = date.today()
+    m = month or today.month
+    y = year or today.year
+
+    q = db.query(LeaveRequest).filter(
+        LeaveRequest.status.in_(["approved", "pending"]),
+        sa_extract("year", LeaveRequest.start_date) == y,
+        sa_extract("month", LeaveRequest.start_date) == m,
+    )
+
+    if department_id:
+        emp_ids = [e.id for e in db.query(Employee).filter(Employee.department_id == department_id).all()]
+        q = q.filter(LeaveRequest.employee_id.in_(emp_ids))
+
+    requests = q.all()
+    result = []
+    for lr in requests:
+        emp = db.query(Employee).filter(Employee.id == lr.employee_id).first()
+        lt = db.query(LeaveType).filter(LeaveType.id == lr.leave_type_id).first()
+        result.append({
+            "id": lr.id,
+            "employee_id": lr.employee_id,
+            "employee_name": f"{emp.first_name} {emp.last_name}" if emp else "Unknown",
+            "employee_photo": emp.profile_photo if emp else None,
+            "department": emp.department.name if emp and emp.department else None,
+            "leave_type": lt.name if lt else "Leave",
+            "leave_type_color": lt.color if lt and hasattr(lt, "color") else "#6366f1",
+            "start_date": str(lr.start_date),
+            "end_date": str(lr.end_date),
+            "total_days": lr.total_days,
+            "status": lr.status,
+        })
+    return result

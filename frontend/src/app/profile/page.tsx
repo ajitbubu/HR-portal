@@ -6,7 +6,18 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import ProfileAvatar from "@/components/ui/ProfileAvatar";
 import { useAuth } from "@/lib/auth";
 import { useApi } from "@/hooks/useApi";
-import type { Employee, LeaveBalance } from "@/types";
+import { api } from "@/lib/api";
+import type { Employee, LeaveBalance, EmployeeList } from "@/types";
+
+interface Delegation {
+  id: number;
+  delegate_id: number;
+  delegate_name: string;
+  start_date: string;
+  end_date: string;
+  reason: string | null;
+  is_active: boolean;
+}
 
 function InfoRow({ label, value, icon }: { label: string; value?: string | null; icon?: string }) {
   return (
@@ -30,7 +41,45 @@ export default function ProfilePage() {
   const { user } = useAuth();
   const { data: emp, refetch } = useApi<Employee>(`/employees/${user?.employee_id}`, [user?.employee_id]);
   const { data: balances } = useApi<LeaveBalance[]>("/leave/balance?year=2026");
+  const { data: myDelegations, refetch: refetchDelegations } = useApi<Delegation[]>("/delegations/my");
+  const { data: allEmployees } = useApi<EmployeeList>("/employees?per_page=100");
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+
+  // Delegation form state
+  const [showDelegForm, setShowDelegForm] = useState(false);
+  const [delegForm, setDelegForm] = useState({ delegate_id: "", start_date: "", end_date: "", reason: "" });
+  const [delegSaving, setDelegSaving] = useState(false);
+  const [delegError, setDelegError] = useState("");
+
+  const handleCreateDelegation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setDelegSaving(true);
+    setDelegError("");
+    try {
+      await api.post("/delegations", {
+        delegate_id: parseInt(delegForm.delegate_id),
+        start_date: delegForm.start_date,
+        end_date: delegForm.end_date,
+        reason: delegForm.reason || null,
+      });
+      setShowDelegForm(false);
+      setDelegForm({ delegate_id: "", start_date: "", end_date: "", reason: "" });
+      refetchDelegations?.();
+    } catch (err: unknown) {
+      setDelegError(err instanceof Error ? err.message : "Failed to create delegation");
+    } finally {
+      setDelegSaving(false);
+    }
+  };
+
+  const handleCancelDelegation = async (id: number) => {
+    try {
+      await api.delete(`/delegations/${id}`);
+      refetchDelegations?.();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to cancel delegation");
+    }
+  };
 
   if (!emp) return (
     <DashboardLayout title="My Profile">
@@ -140,6 +189,105 @@ export default function ProfilePage() {
                 </Link>
               </div>
             )}
+
+            {/* Out of Office Delegation */}
+            <div className="card">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h4 className="font-semibold text-gray-900">Out of Office Delegation</h4>
+                  <p className="text-xs text-gray-400 mt-0.5">Delegate your approvals when you&apos;re away</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowDelegForm(!showDelegForm)}
+                  className="btn-primary text-sm flex items-center gap-1.5"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                  Set Delegation
+                </button>
+              </div>
+
+              {/* Create form */}
+              {showDelegForm && (
+                <form onSubmit={handleCreateDelegation} className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-4 space-y-3">
+                  <p className="text-sm font-medium text-blue-900">New Delegation</p>
+                  {delegError && <p className="text-xs text-red-600">{delegError}</p>}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Delegate To *</label>
+                      <select
+                        title="Delegate To"
+                        value={delegForm.delegate_id}
+                        onChange={(e) => setDelegForm({ ...delegForm, delegate_id: e.target.value })}
+                        className="input-field text-sm"
+                        required
+                      >
+                        <option value="">Select employee...</option>
+                        {allEmployees?.items?.filter((e) => e.id !== emp?.id).map((e) => (
+                          <option key={e.id} value={e.id}>{e.first_name} {e.last_name} — {e.employee_id}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Reason</label>
+                      <input
+                        value={delegForm.reason}
+                        onChange={(e) => setDelegForm({ ...delegForm, reason: e.target.value })}
+                        className="input-field text-sm"
+                        placeholder="e.g. Annual leave, Conference..."
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Start Date *</label>
+                      <input title="Start Date" type="date" value={delegForm.start_date} onChange={(e) => setDelegForm({ ...delegForm, start_date: e.target.value })} className="input-field text-sm" required />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">End Date *</label>
+                      <input title="End Date" type="date" value={delegForm.end_date} onChange={(e) => setDelegForm({ ...delegForm, end_date: e.target.value })} className="input-field text-sm" required />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <button type="submit" disabled={delegSaving} className="btn-primary text-sm">{delegSaving ? "Saving..." : "Create Delegation"}</button>
+                    <button type="button" onClick={() => setShowDelegForm(false)} className="btn-secondary text-sm">Cancel</button>
+                  </div>
+                </form>
+              )}
+
+              {/* Existing delegations */}
+              {myDelegations && myDelegations.length > 0 ? (
+                <div className="space-y-2">
+                  {myDelegations.map((d) => {
+                    const today = new Date().toISOString().slice(0, 10);
+                    const isCurrentlyActive = d.is_active && d.start_date <= today && d.end_date >= today;
+                    return (
+                      <div key={d.id} className={`flex items-center justify-between p-3 rounded-xl border ${isCurrentlyActive ? "border-green-200 bg-green-50" : "border-gray-100 bg-gray-50"}`}>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium text-gray-900">{d.delegate_name}</p>
+                            {isCurrentlyActive && <span className="badge badge-success text-[10px]">Active Now</span>}
+                            {!d.is_active && <span className="badge badge-gray text-[10px]">Cancelled</span>}
+                          </div>
+                          <p className="text-xs text-gray-500 mt-0.5">{d.start_date} → {d.end_date}{d.reason ? ` · ${d.reason}` : ""}</p>
+                        </div>
+                        {d.is_active && (
+                          <button
+                            type="button"
+                            onClick={() => handleCancelDelegation(d.id)}
+                            className="ml-3 text-xs text-red-500 hover:text-red-700 font-medium flex-shrink-0"
+                          >
+                            Cancel
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400 text-center py-4">No delegations set. Create one if you&apos;ll be out of office.</p>
+              )}
+            </div>
 
             {/* Leave Balance */}
             {balances && balances.length > 0 && (

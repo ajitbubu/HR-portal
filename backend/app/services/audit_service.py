@@ -1,6 +1,13 @@
 import json
+from datetime import date, datetime
 from sqlalchemy.orm import Session
 from app.models.audit import AuditLog
+
+
+def _json_serializer(obj):
+    if isinstance(obj, (date, datetime)):
+        return obj.isoformat()
+    raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
 
 
 def log_audit(
@@ -18,8 +25,8 @@ def log_audit(
         action=action,
         entity_type=entity_type,
         entity_id=entity_id,
-        old_values=json.dumps(old_values) if old_values else None,
-        new_values=json.dumps(new_values) if new_values else None,
+        old_values=json.dumps(old_values, default=_json_serializer) if old_values else None,
+        new_values=json.dumps(new_values, default=_json_serializer) if new_values else None,
         ip_address=ip_address,
     )
     db.add(entry)

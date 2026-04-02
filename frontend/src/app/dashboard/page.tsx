@@ -7,6 +7,45 @@ import { useApi } from "@/hooks/useApi";
 import { useAuth } from "@/lib/auth";
 import type { DashboardStats, Announcement, LeaveRequest } from "@/types";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http://localhost:8000";
+
+interface Celebration {
+  id: number;
+  name: string;
+  photo?: string;
+  type: "birthday" | "anniversary";
+  date: string;
+  days_away: number;
+  label: string;
+}
+
+function CelebrationCard({ c }: { c: Celebration }) {
+  const photoUrl = c.photo ? `${API_BASE}${c.photo}` : null;
+  const nameParts = c.name.split(" ");
+  const initials = `${nameParts[0]?.[0] ?? ""}${nameParts[1]?.[0] ?? ""}`.toUpperCase();
+  const isToday = c.days_away === 0;
+  return (
+    <Link href={`/employees/${c.id}`} className="flex items-center gap-3 py-2 px-3 rounded-xl hover:bg-gray-50 transition-colors -mx-1 group">
+      <div className="relative flex-shrink-0">
+        {photoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={photoUrl} alt={c.name} className="w-9 h-9 rounded-full object-cover" />
+        ) : (
+          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold">{initials}</div>
+        )}
+        <span className="absolute -bottom-1 -right-1 text-sm">{c.type === "birthday" ? "🎂" : "🏅"}</span>
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium text-gray-900 truncate group-hover:text-primary-700">{c.name}</p>
+        <p className="text-xs text-gray-500 truncate">{c.label}</p>
+      </div>
+      <span className={`text-xs font-semibold flex-shrink-0 px-2 py-0.5 rounded-full ${isToday ? "bg-amber-100 text-amber-700" : "text-gray-400"}`}>
+        {isToday ? "Today!" : `${c.days_away}d`}
+      </span>
+    </Link>
+  );
+}
+
 function QuickAction({ href, icon, label, color }: { href: string; icon: string; label: string; color: string }) {
   return (
     <Link href={href} className="flex flex-col items-center gap-2 p-4 rounded-2xl hover:bg-gray-50 transition-all duration-200 group">
@@ -38,8 +77,14 @@ const priorityStyle: Record<string, string> = {
 export default function DashboardPage() {
   const { user } = useAuth();
   const { data: stats } = useApi<DashboardStats>("/dashboard/stats");
+
+  const canViewOrgStats =
+    user?.role === "super_admin" ||
+    user?.role === "hr_admin" ||
+    user?.name === "Debjani Mohanty";
   const { data: announcements } = useApi<Announcement[]>("/announcements");
   const { data: recentLeave } = useApi<LeaveRequest[]>("/leave/my-requests");
+  const { data: celebrations } = useApi<Celebration[]>("/dashboard/celebrations?days=30");
 
   const greeting = () => {
     const hour = new Date().getHours();
@@ -63,12 +108,15 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <StatsCard title="Total Employees" value={stats?.total_employees || 0} icon="users" color="indigo" />
-        <StatsCard title="On Leave Today" value={stats?.on_leave_today || 0} icon="calendar" color="yellow" />
-        <StatsCard title="Pending Approvals" value={stats?.pending_approvals || 0} icon="clock" color="red" />
-        <StatsCard title="New Hires" value={stats?.new_hires_this_month || 0} icon="sparkle" color="green" subtitle="This month" />
-      </div>
+      {canViewOrgStats && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+          <StatsCard title="Total Employees" value={stats?.total_employees || 0} icon="users" color="indigo" />
+          <StatsCard title="On Leave Today" value={stats?.on_leave_today || 0} icon="calendar" color="yellow" />
+          <StatsCard title="Absent Today" value={stats?.absent_today || 0} icon="clock" color="red" />
+          <StatsCard title="Pending Approvals" value={stats?.pending_approvals || 0} icon="check" color="purple" />
+          <StatsCard title="New Hires" value={stats?.new_hires_this_month || 0} icon="sparkle" color="green" subtitle="This month" />
+        </div>
+      )}
 
       {/* Quick Actions */}
       <div className="card mb-6">
@@ -149,6 +197,21 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Celebrations Widget */}
+      {celebrations && celebrations.length > 0 && (
+        <div className="card mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="font-semibold text-gray-900">Upcoming Celebrations</h4>
+            <span className="text-xs text-gray-400">Next 30 days</span>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {celebrations.slice(0, 6).map((c) => (
+              <CelebrationCard key={`${c.type}-${c.id}`} c={c} />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Secondary Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

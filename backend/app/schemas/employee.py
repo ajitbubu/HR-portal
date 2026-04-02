@@ -18,6 +18,7 @@ class EmployeeCreate(BaseModel):
     designation_id: int | None = None
     location_id: int | None = None
     manager_id: int | None = None
+    team_id: int | None = None
     band: str | None = None
     employment_type: str = "full_time"
     joining_date: date
@@ -42,10 +43,12 @@ class EmployeeUpdate(BaseModel):
     designation_id: int | None = None
     location_id: int | None = None
     manager_id: int | None = None
+    team_id: int | None = None
     band: str | None = None
     employment_type: str | None = None
     status: str | None = None
     profile_photo: str | None = None
+    joining_date: date | None = None
 
 
 class DepartmentInfo(BaseModel):
@@ -80,6 +83,14 @@ class ManagerInfo(BaseModel):
     employee_id: str
 
 
+class TeamInfo(BaseModel):
+    id: int
+    name: str
+
+    class Config:
+        from_attributes = True
+
+
 class EmployeeResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -100,6 +111,8 @@ class EmployeeResponse(BaseModel):
     designation: DesignationInfo | None = None
     location: LocationInfo | None = None
     manager: ManagerInfo | None = None
+    team: TeamInfo | None = None
+    direct_reports: list[ManagerInfo] = []
     band: str | None = None
     employment_type: str
     status: str

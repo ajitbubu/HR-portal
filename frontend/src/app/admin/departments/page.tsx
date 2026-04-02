@@ -61,7 +61,7 @@ export default function DepartmentsPage() {
         </form>
       )}
 
-      <DataTable columns={columns} data={data || []} />
+      <DataTable columns={columns as never} data={(data || []) as never} />
     </DashboardLayout>
   );
 }

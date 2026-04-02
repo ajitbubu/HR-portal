@@ -1,0 +1,45 @@
+graph TB
+    subgraph Client["Client Browser"]
+        UI["Next.js 14 Frontend\n(React + TypeScript)\nPort 3000"]
+    end
+
+    subgraph Frontend["Frontend src/"]
+        Pages["Pages / Routes\n/dashboard\n/employees\n/leave\n/approvals\n/attendance\n/salary\n/documents\n/reports\n/org-chart\n/onboarding\n/announcements\n/admin\n/profile"]
+        Components["Components\nSidebar · Header\nDashboardLayout\nDataTable · StatsCard\nAvatar · ProfileAvatar"]
+        Lib["Lib\napi.ts · auth.tsx\nuseApi hook"]
+    end
+
+    subgraph Backend["FastAPI Backend\nPython 3.12 · Port 8000"]
+        Auth["Auth\nJWT + bcrypt\nRole-based Access\n5 Roles"]
+        Endpoints["API Endpoints /api/\nauth · employees · leave\napprovals · admin · salary\nattendance · documents\nnotifications · dashboard\norg-chart · announcements\naudit · reports · onboarding\nholidays · hr-tickets\nperformance"]
+        Services["Services\nemployee_service\nleave_service\napproval_service\nnotification_service\naudit_service"]
+        Models["Models\nUser · Employee\nOrganization · Leave\nSalary · Attendance\nDocument · Workflow\nNotification · Audit\nAnnouncement · Misc"]
+    end
+
+    subgraph Database["PostgreSQL 16\nPort 5432"]
+        Tables["Core Tables\nusers · employees\ndepartments · designations\nlocations · business_units\nleave_requests · leave_types\nleave_balances · leave_approvals\nsalary_history · attendance_records\ndocuments · workflows\nnotifications · audit_logs\nannouncements · onboarding_tasks\nholidays · hr_tickets\nperformance_reviews\ncompany_settings"]
+    end
+
+    subgraph Storage["File Storage\n/uploads volume"]
+        Files["Profile Photos\nEmployee Documents\nBulk Import Files"]
+    end
+
+    subgraph Docker["Docker Compose"]
+        DC_FE["hr-portal-frontend"]
+        DC_BE["hr-portal-backend"]
+        DC_DB["hr-portal-db"]
+    end
+
+    UI --> Lib
+    Lib --> Pages
+    Pages --> Components
+    Lib -->|"HTTP + JWT Bearer\nREST API"| Endpoints
+    Endpoints --> Auth
+    Auth --> Services
+    Services --> Models
+    Models -->|"SQLAlchemy ORM"| Database
+    Endpoints -->|"File upload/download"| Storage
+
+    DC_FE --> UI
+    DC_BE --> Backend
+    DC_DB --> Database

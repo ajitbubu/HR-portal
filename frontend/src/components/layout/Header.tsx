@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import Avatar from "@/components/ui/Avatar";
 import type { Notification as NotifType, Employee } from "@/types";
+import { useSidebar } from "./SidebarContext";
 
 const typeIcon: Record<string, string> = {
   leave: "M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5",
@@ -35,6 +37,8 @@ function timeAgo(dateStr?: string) {
 
 export default function Header({ title }: { title: string }) {
   const { user } = useAuth();
+  const { mobileOpen, setMobileOpen } = useSidebar();
+  const router = useRouter();
   const [notifications, setNotifications] = useState<NotifType[]>([]);
   const [showNotifs, setShowNotifs] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -52,12 +56,12 @@ export default function Header({ title }: { title: string }) {
         .catch(() => {});
     }
 
-    // Poll every 30s
+    // Poll every 10s
     const interval = setInterval(() => {
       api.get<{ count: number }>("/notifications/unread-count")
         .then((res) => setUnreadCount(res.count))
         .catch(() => {});
-    }, 30000);
+    }, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -86,6 +90,12 @@ export default function Header({ title }: { title: string }) {
     setUnreadCount((c) => Math.max(0, c - 1));
   };
 
+  const handleNotifClick = async (n: NotifType) => {
+    if (!n.is_read) await markRead(n.id);
+    setShowNotifs(false);
+    if (n.link) router.push(n.link);
+  };
+
   const markAllRead = async () => {
     await api.post("/notifications/mark-all-read");
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
@@ -93,8 +103,19 @@ export default function Header({ title }: { title: string }) {
   };
 
   return (
-    <header className="h-16 bg-white/80 backdrop-blur-md border-b border-gray-100 flex items-center justify-between px-6 sticky top-0 z-20">
-      <div>
+    <header className="h-16 bg-white/80 backdrop-blur-md border-b border-gray-100 flex items-center justify-between px-4 md:px-6 sticky top-0 z-20">
+      <div className="flex items-center gap-3">
+        {/* Hamburger — mobile only */}
+        <button
+          type="button"
+          onClick={() => setMobileOpen(!mobileOpen)}
+          className="md:hidden p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+          aria-label="Toggle menu"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+          </svg>
+        </button>
         <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
       </div>
 
@@ -118,7 +139,7 @@ export default function Header({ title }: { title: string }) {
           </button>
 
           {showNotifs && (
-            <div className="absolute right-0 top-full mt-2 w-96 bg-white rounded-2xl shadow-soft border border-gray-100 overflow-hidden z-50 animate-slide-up">
+            <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-soft border border-gray-100 overflow-hidden z-50 animate-slide-up">
               <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
                 <div>
                   <h3 className="font-semibold text-gray-900 text-sm">Notifications</h3>
@@ -145,7 +166,7 @@ export default function Header({ title }: { title: string }) {
                     return (
                       <div
                         key={n.id}
-                        onClick={() => !n.is_read && markRead(n.id)}
+                        onClick={() => handleNotifClick(n)}
                         className={`flex items-start gap-3 px-4 py-3 border-b border-gray-50 cursor-pointer transition-colors hover:bg-gray-50 ${
                           !n.is_read ? "bg-primary-50/30" : ""
                         }`}

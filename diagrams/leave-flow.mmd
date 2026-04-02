@@ -1,0 +1,79 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#1A77F2', 'primaryTextColor': '#fff', 'primaryBorderColor': '#1557B0', 'lineColor': '#64748b'}}}%%
+
+sequenceDiagram
+    actor Emp as Employee
+    participant FE as Frontend
+    participant API as FastAPI /leave/apply
+    participant LS as leave_service
+    participant AS as approval_service
+    participant NS as notification_service
+    participant DB as PostgreSQL
+    actor Mgr1 as L1 Manager
+    actor Mgr2 as L2 Manager
+    actor HR as HR Admin
+
+    Emp->>FE: Fill leave form & submit
+    FE->>API: POST /api/leave/apply {leave_type, dates, reason}
+    API->>API: Validate JWT token & get employee
+
+    API->>LS: calculate_leave_days()
+    LS-->>API: total_days
+
+    API->>LS: check_leave_balance()
+    LS-->>API: sufficient / error
+
+    API->>DB: INSERT leave_requests (status=PENDING)
+    API->>LS: update_leave_balance_on_apply() → pending++
+    API->>DB: UPDATE leave_balances
+
+    API->>AS: create_approval_chain(leave_req, employee)
+    AS->>AS: resolve_workflow() → find matching workflow
+    AS->>AS: resolve_approver_for_step() → get approver IDs
+    AS->>DB: INSERT leave_approvals (step 1, 2, ...)
+    AS->>NS: create_notification(step1_approver, "New Leave Request")
+    NS->>DB: INSERT notifications
+
+    API->>NS: notify_leave_chain(leave_req, employee)
+    NS->>DB: Query L1 manager
+    NS->>DB: INSERT notification → L1 Manager
+    NS->>DB: Query L2 manager
+    NS->>DB: INSERT notification → L2 Manager
+    NS->>DB: Query all HR admins
+    NS->>DB: INSERT notifications → HR Admins
+
+    API-->>FE: 200 OK — LeaveRequestResponse
+    FE-->>Emp: "Leave applied successfully"
+
+    Note over Mgr1,HR: Within 10 seconds (polling)
+    Mgr1->>FE: Bell badge shows unread count
+    Mgr2->>FE: Bell badge shows unread count
+    HR->>FE: Bell badge shows unread count
+
+    Mgr1->>FE: Click notification → navigate to /approvals
+    FE->>API: GET /api/approvals/pending
+    API-->>FE: List of pending approvals
+    Mgr1->>FE: Click Approve
+
+    FE->>API: POST /api/approvals/{id}/action {action: "approve"}
+    API->>AS: process_approval_action(approve)
+
+    alt More approval steps
+        AS->>DB: UPDATE leave_approvals step1 = APPROVED
+        AS->>DB: UPDATE leave_requests current_step++
+        AS->>NS: create_notification(step2_approver, "Awaiting Your Approval")
+        NS->>DB: INSERT notification → Next Approver
+    else Final step approved
+        AS->>DB: UPDATE leave_approvals → APPROVED
+        AS->>DB: UPDATE leave_requests status = APPROVED
+        AS->>LS: update_leave_balance_on_approve() → used++
+        AS->>NS: create_notification(employee, "Leave Approved")
+        NS->>DB: INSERT notification → Employee
+        FE-->>Emp: Bell shows "Your leave has been approved"
+    end
+
+    alt Rejected
+        AS->>DB: UPDATE leave_requests status = REJECTED
+        AS->>LS: update_leave_balance_on_reject() → pending--
+        AS->>NS: create_notification(employee, "Leave Rejected")
+        NS->>DB: INSERT notification → Employee
+    end

@@ -1,0 +1,54 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#1A77F2', 'primaryTextColor': '#fff', 'primaryBorderColor': '#1557B0', 'lineColor': '#64748b'}}}%%
+
+sequenceDiagram
+    actor User
+    participant FE as Frontend (Next.js)
+    participant Auth as AuthContext
+    participant API as FastAPI /auth
+    participant DB as PostgreSQL
+
+    User->>FE: Open app
+    FE->>Auth: Check localStorage for access_token
+    alt Token exists
+        Auth->>API: GET /api/auth/me (Bearer token)
+        API->>API: Decode JWT → get user_id
+        API->>DB: Query users WHERE id = user_id
+        DB-->>API: User record
+        API-->>Auth: {id, email, role, employee_id, name}
+        Auth-->>FE: User logged in → redirect /dashboard
+    else No token
+        Auth-->>FE: Not authenticated → show /login
+    end
+
+    User->>FE: Enter email + password → Sign In
+    FE->>API: POST /api/auth/login {email, password}
+    API->>DB: Query users WHERE email = email
+    DB-->>API: User with password_hash
+    API->>API: bcrypt.verify(password, hash)
+
+    alt Valid credentials
+        API->>API: Create JWT (expires 480 min)
+        API-->>FE: {access_token, role, employee_id, name}
+        FE->>Auth: Store token in localStorage
+        Auth->>FE: Set user state
+        FE-->>User: Redirect to /dashboard
+    else Invalid credentials
+        API-->>FE: 401 Unauthorized
+        FE-->>User: Show error message
+    end
+
+    Note over FE,API: Every subsequent API request
+    FE->>API: Any request + Authorization: Bearer {token}
+    API->>API: get_current_user() → decode JWT
+    API->>API: require_roles() → check user.role
+    alt Role allowed
+        API-->>FE: 200 + data
+    else Role not allowed
+        API-->>FE: 403 Forbidden
+    end
+
+    User->>FE: Click Sign Out
+    FE->>Auth: logout()
+    Auth->>FE: Remove token from localStorage
+    Auth->>FE: Clear user state
+    FE-->>User: Redirect to /login

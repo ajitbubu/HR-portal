@@ -1,0 +1,141 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#1A77F2', 'primaryTextColor': '#fff', 'primaryBorderColor': '#1557B0', 'lineColor': '#64748b'}}}%%
+
+erDiagram
+    users {
+        int id PK
+        string email
+        string password_hash
+        string role
+        bool is_active
+    }
+
+    employees {
+        int id PK
+        int user_id FK
+        string employee_id
+        string first_name
+        string last_name
+        string email
+        int department_id FK
+        int designation_id FK
+        int location_id FK
+        int manager_id FK
+        int team_id FK
+        string employment_type
+        string status
+        date joining_date
+        string band
+    }
+
+    departments {
+        int id PK
+        string name
+        int business_unit_id FK
+        int head_id FK
+    }
+
+    teams {
+        int id PK
+        string name
+        int department_id FK
+        int lead_id FK
+    }
+
+    designations {
+        int id PK
+        string title
+        string band
+        int level
+    }
+
+    locations {
+        int id PK
+        string name
+        string city
+        string country
+    }
+
+    leave_requests {
+        int id PK
+        int employee_id FK
+        int leave_type_id FK
+        date start_date
+        date end_date
+        float total_days
+        string status
+        int current_approval_step
+    }
+
+    leave_types {
+        int id PK
+        string name
+        bool is_paid
+        bool carry_forward
+        int default_days
+    }
+
+    leave_balances {
+        int id PK
+        int employee_id FK
+        int leave_type_id FK
+        int year
+        float entitled
+        float used
+        float pending
+        float carried_forward
+    }
+
+    leave_approvals {
+        int id PK
+        int leave_request_id FK
+        int approver_id FK
+        int step_order
+        string status
+        string comments
+        datetime acted_at
+    }
+
+    approval_workflows {
+        int id PK
+        string name
+        int department_id FK
+        int leave_type_id FK
+        bool is_default
+    }
+
+    notifications {
+        int id PK
+        int user_id FK
+        string title
+        string message
+        string type
+        bool is_read
+        string link
+    }
+
+    audit_logs {
+        int id PK
+        int user_id FK
+        string action
+        string entity_type
+        int entity_id
+        text old_values
+        text new_values
+    }
+
+    users ||--o| employees : "has profile"
+    employees }o--|| departments : "belongs to"
+    employees }o--|| designations : "has title"
+    employees }o--|| locations : "based at"
+    employees }o--o| teams : "member of"
+    employees }o--o| employees : "reports to (manager)"
+    departments }o--|| employees : "headed by"
+    teams }o--|| departments : "part of"
+    leave_requests }o--|| employees : "submitted by"
+    leave_requests }o--|| leave_types : "of type"
+    leave_approvals }o--|| leave_requests : "approves"
+    leave_approvals }o--|| employees : "approved by"
+    leave_balances }o--|| employees : "belongs to"
+    leave_balances }o--|| leave_types : "for type"
+    notifications }o--|| users : "sent to"
+    audit_logs }o--|| users : "performed by"

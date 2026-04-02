@@ -16,6 +16,7 @@ from app.models.attendance import HolidayCalendar, Holiday
 from app.models.notification import Notification
 from app.models.audit import AuditLog
 from app.models.misc import Announcement, CompanySetting, OnboardingTask
+from app.models.resignation import ResignationRequest, ResignationActionLog
 
 
 def seed():
@@ -47,21 +48,25 @@ def seed():
 
         # ── Locations ──
         locations = []
-        for name, city, country in [
-            ("HQ - San Francisco", "San Francisco", "USA"),
-            ("NYC Office", "New York", "USA"),
-            ("London Office", "London", "UK"),
-            ("Bangalore Office", "Bangalore", "India"),
-            ("Remote", "N/A", "Global"),
+        for name, city, state, country in [
+            ("Bhubaneswar, IND", "Bhubaneswar", "Odisha", "India"),
+            ("Mumbai, IND", "Mumbai", "Maharashtra", "India"),
+            ("Pune, IND", "Pune", "Maharashtra", "India"),
+            ("Delhi, IND", "Delhi", "Delhi", "India"),
+            ("Bangalore, IND", "Bangalore", "Karnataka", "India"),
+            ("Hyderabad, IND", "Hyderabad", "Telangana", "India"),
+            ("Santa Clara, CA", "Santa Clara", "California", "USA"),
+            ("New York City, USA", "New York City", "New York", "USA"),
+            ("Other", "Other", None, "Other"),
         ]:
-            loc = Location(name=name, city=city, country=country)
+            loc = Location(name=name, city=city, state=state, country=country)
             db.add(loc)
             locations.append(loc)
         db.flush()
 
         # ── Business Units ──
         bus = []
-        for name in ["Technology", "Operations", "Corporate"]:
+        for name in ["DataSafeGuard"]:
             bu = BusinessUnit(name=name)
             db.add(bu)
             bus.append(bu)
@@ -69,114 +74,94 @@ def seed():
 
         # ── Designations ──
         designations = []
-        for title, level, band in [
-            ("CEO", 10, "E1"), ("CTO", 9, "E1"), ("VP Engineering", 8, "E2"),
-            ("Senior Director", 7, "D1"), ("Director", 6, "D2"),
-            ("Senior Manager", 5, "M1"), ("Manager", 4, "M2"),
-            ("Team Lead", 3, "IC3"), ("Senior Engineer", 3, "IC3"),
-            ("Engineer", 2, "IC2"), ("Associate Engineer", 1, "IC1"),
-            ("HR Director", 7, "D1"), ("HR Manager", 5, "M1"),
-            ("HR Specialist", 2, "IC2"), ("Intern", 0, "INT"),
+        for title, level in [
+            ("CEO / Managing Director", 1),   # 0
+            ("Director", 2),                   # 1
+            ("Sr. Director", 2),               # 2
+            ("Engineering Manager", 3),        # 3
+            ("Senior Software Engineer", 4),   # 4
+            ("Software Engineer", 5),          # 5
+            ("HR Executive", 4),               # 6
+            ("Privacy Expert", 4),             # 7
+            ("HR Manager", 3),                 # 8
+            ("Finance Manager", 3),            # 9
+            ("Operations Manager", 3),         # 10
+            ("Intern", 7),                     # 11
+            ("Contractor", 5),                 # 12
         ]:
-            d = Designation(title=title, level=level, band=band)
+            d = Designation(title=title, level=level)
             db.add(d)
             designations.append(d)
         db.flush()
 
         # ── Departments ──
         depts = []
-        dept_data = [
-            ("Engineering", "ENG", bus[0].id), ("Product", "PRD", bus[0].id),
-            ("Data Science", "DS", bus[0].id), ("Human Resources", "HR", bus[2].id),
-            ("Finance", "FIN", bus[2].id), ("Marketing", "MKT", bus[1].id),
-            ("Sales", "SLS", bus[1].id), ("Customer Support", "SUP", bus[1].id),
-        ]
-        for name, code, bu_id in dept_data:
-            d = Department(name=name, code=code, business_unit_id=bu_id)
+        for name in ["Engineering", "Product", "Sales", "Marketing", "Human Resources",
+                     "Finance", "Operations", "Legal & Compliance", "Customer Success", "Executive"]:
+            d = Department(name=name, business_unit_id=bus[0].id)
             db.add(d)
             depts.append(d)
         db.flush()
+        # dept index: Engineering=0, Executive=9, HR=4
 
-        # ── Employees (50 employees) ──
+        # ── Employees (actual DataSafeGuard team) ──
+        # Format: (emp_id, first, last, email, role, desig_idx, dept_idx, loc_idx, mgr_emp_idx, joining_date)
+        # loc: 0=Bhubaneswar,IND  1=Mumbai,IND  2=Pune,IND  3=Delhi,IND
+        #      4=Bangalore,IND    5=Hyderabad,IND  6=SantaClara,CA  7=NewYorkCity,USA  8=Other
         emp_data = [
-            # (first, last, email_suffix, dept_idx, desig_idx, loc_idx, manager_emp_idx, user_idx, employment_type)
-            ("Robert", "Chen", "robert.chen", 0, 0, 0, None, 0, "full_time"),       # 0: CEO
-            ("Sarah", "Mitchell", "sarah.mitchell", 0, 1, 0, 0, None, "full_time"),  # 1: CTO
-            ("James", "Wilson", "james.wilson", 3, 11, 0, 0, 1, "full_time"),        # 2: HR Director
-            ("Emily", "Davis", "emily.davis", 0, 2, 0, 1, None, "full_time"),        # 3: VP Eng
-            ("Michael", "Johnson", "michael.johnson", 0, 5, 0, 3, 2, "full_time"),   # 4: Sr Mgr (manager user)
-            ("Lisa", "Anderson", "lisa.anderson", 3, 12, 0, 2, 3, "full_time"),      # 5: HR Mgr (approver user)
-            ("David", "Thompson", "david.thompson", 0, 7, 0, 4, 4, "full_time"),     # 6: Team Lead (employee user)
-            ("Jennifer", "Garcia", "jennifer.garcia", 0, 8, 0, 4, None, "full_time"),
-            ("Christopher", "Martinez", "chris.martinez", 0, 9, 1, 6, None, "full_time"),
-            ("Amanda", "Robinson", "amanda.robinson", 0, 9, 1, 6, None, "full_time"),
-            ("Daniel", "Clark", "daniel.clark", 0, 10, 0, 6, None, "full_time"),     # 10
-            ("Jessica", "Lewis", "jessica.lewis", 1, 5, 0, 3, None, "full_time"),
-            ("Matthew", "Lee", "matthew.lee", 1, 7, 0, 11, None, "full_time"),
-            ("Ashley", "Walker", "ashley.walker", 1, 9, 2, 11, None, "full_time"),
-            ("Andrew", "Hall", "andrew.hall", 2, 5, 3, 3, None, "full_time"),
-            ("Stephanie", "Allen", "stephanie.allen", 2, 8, 3, 14, None, "full_time"),  # 15
-            ("Joshua", "Young", "joshua.young", 2, 9, 3, 14, None, "full_time"),
-            ("Nicole", "King", "nicole.king", 3, 13, 0, 5, None, "full_time"),
-            ("Ryan", "Wright", "ryan.wright", 4, 5, 0, 0, None, "full_time"),
-            ("Megan", "Lopez", "megan.lopez", 4, 9, 0, 18, None, "full_time"),
-            ("Brandon", "Hill", "brandon.hill", 5, 5, 1, 0, None, "full_time"),      # 20
-            ("Rachel", "Scott", "rachel.scott", 5, 9, 1, 20, None, "full_time"),
-            ("Kevin", "Green", "kevin.green", 6, 5, 0, 0, None, "full_time"),
-            ("Laura", "Adams", "laura.adams", 6, 9, 0, 22, None, "full_time"),
-            ("Jason", "Baker", "jason.baker", 7, 5, 3, 0, None, "full_time"),
-            ("Michelle", "Gonzalez", "michelle.gonzalez", 7, 9, 3, 24, None, "full_time"),  # 25
-            ("Justin", "Nelson", "justin.nelson", 0, 9, 0, 4, None, "full_time"),
-            ("Amber", "Carter", "amber.carter", 0, 9, 2, 4, None, "full_time"),
-            ("Tyler", "Mitchell2", "tyler.mitchell", 0, 10, 0, 6, None, "full_time"),
-            ("Samantha", "Perez", "samantha.perez", 1, 9, 0, 11, None, "full_time"),
-            ("Aaron", "Roberts", "aaron.roberts", 2, 9, 3, 14, None, "full_time"),   # 30
-            ("Kayla", "Turner", "kayla.turner", 3, 13, 0, 5, None, "full_time"),
-            ("Nathan", "Phillips", "nathan.phillips", 5, 9, 1, 20, None, "full_time"),
-            ("Brittany", "Campbell", "brittany.campbell", 6, 9, 0, 22, None, "full_time"),
-            ("Jacob", "Parker", "jacob.parker", 7, 9, 3, 24, None, "full_time"),
-            ("Christina", "Evans", "christina.evans", 0, 8, 0, 4, None, "full_time"),  # 35
-            ("Sean", "Edwards", "sean.edwards", 0, 9, 1, 6, None, "full_time"),
-            ("Danielle", "Collins", "danielle.collins", 1, 10, 0, 12, None, "full_time"),
-            ("Patrick", "Stewart2", "patrick.stewart", 4, 9, 0, 18, None, "full_time"),
-            ("Vanessa", "Sanchez", "vanessa.sanchez", 5, 10, 1, 20, None, "full_time"),
-            ("Derek", "Morris", "derek.morris", 0, 9, 0, 4, None, "part_time"),       # 40
-            ("Heather", "Rogers", "heather.rogers", 3, 13, 0, 5, None, "part_time"),
-            ("Cody", "Reed", "cody.reed", 0, 14, 0, 6, None, "intern"),
-            ("Tiffany", "Cook", "tiffany.cook", 1, 14, 0, 12, None, "intern"),
-            ("Marcus", "Morgan", "marcus.morgan", 0, 9, 2, 4, None, "contractor"),
-            ("Olivia", "Bell", "olivia.bell", 2, 9, 3, 14, None, "contractor"),       # 45
-            ("Trevor", "Murphy", "trevor.murphy", 6, 10, 0, 22, None, "full_time"),
-            ("Courtney", "Rivera", "courtney.rivera", 7, 10, 3, 24, None, "full_time"),
-            ("Kyle", "Cooper", "kyle.cooper", 0, 8, 0, 3, None, "full_time"),
-            ("Allison", "Richardson", "allison.richardson", 4, 10, 0, 18, None, "full_time"),
+            # idx  emp_id      first           last                email                            role          desig loc dept mgr  joining
+            (0,  "DS00001", "Sudhir",          "Sahu",              "sudhir@datasafeguard.ai",       "super_admin", 0,   9,   6,  None, date(2020, 1, 1)),
+            (1,  "DS00002", "Lee",             "Nocon",             "lnocon@datasafeguard.ai",       "manager",     1,   9,   6,  0,    date(2020, 6, 1)),
+            (2,  "DS00003", "Mahi",            "Gupta",             "mgupta@datasafeguard.ai",       "employee",    1,   9,   6,  0,    date(2021, 1, 1)),
+            (3,  "DS00004", "Pranab",          "Mohanty",           "pmohanty@datasafeguard.ai",     "employee",    1,   9,   6,  0,    date(2021, 3, 1)),
+            (4,  "DS00005", "Tedra",           "Chen",              "tchen@datasafeguard.ai",        "employee",    1,   9,   6,  0,    date(2021, 5, 1)),
+            (5,  "DS00006", "Tirthankar",      "Mitra",             "tmitra@datasafeguard.ai",       "employee",    1,   9,   6,  0,    date(2021, 7, 1)),
+            (6,  "DS00007", "Ajit",            "Sahu",              "asahu@datasafeguard.ai",        "manager",     3,   0,   0,  1,    date(2021, 9, 1)),
+            (7,  "DS00008", "Sumeet",          "Shah",              "sshah@datasafeguard.ai",        "manager",     3,   0,   0,  1,    date(2021, 11, 1)),
+            (8,  "DS00009", "Ashis",           "Rout",              "arout@datasafeguard.ai",        "manager",     3,   0,   0,  1,    date(2022, 1, 1)),
+            (9,  "DS00010", "Santosh",         "Das",               "sdas@datasafeguard.ai",         "manager",     3,   0,   0,  6,    date(2022, 3, 1)),
+            (10, "DS00011", "Harsh",           "Nagar",             "hnagar@datasafeguard.ai",       "employee",    5,   0,   0,  6,    date(2022, 5, 1)),
+            (11, "DS00012", "Abhisek",         "Khuntia",           "akhuntia@datasafeguard.ai",     "employee",    5,   0,   0,  6,    date(2022, 7, 1)),
+            (12, "DS00013", "Sourav",          "Mohapatra",         "smohapatra@datasafeguard.ai",   "employee",    5,   0,   0,  6,    date(2022, 9, 1)),
+            (13, "DS00014", "Soumya",          "Sootar",            "ssootar@datasafeguard.ai",      "employee",    5,   0,   0,  6,    date(2022, 11, 1)),
+            (14, "DS00016", "Subash",          "Goswami",           "sgoswami@datasafeguard.ai",     "employee",    5,   0,   0,  6,    date(2023, 1, 1)),
+            (15, "DS00017", "Dr. Anita",       "Mishra",            "amishra@datasafeguard.ai",      "employee",    4,   0,   0,  9,    date(2023, 3, 1)),
+            (16, "DS00018", "Bibhu",           "Behera",            "bbehera@datasafeguard.ai",      "employee",    5,   0,   0,  9,    date(2023, 5, 1)),
+            (17, "DS00019", "Pradeepta Kumar", "Behera",            "pbehera@datasafeguard.ai",      "employee",    5,   0,   0,  9,    date(2023, 7, 1)),
+            (18, "DS00020", "Ankita",          "Choudhury",         "achoudhury@datasafeguard.ai",   "employee",    5,   0,   0,  7,    date(2023, 9, 1)),
+            (19, "DS00021", "Peeyush",         "Tambe",             "ptambe@datasafeguard.ai",       "employee",    5,   0,   0,  7,    date(2023, 11, 1)),
+            (20, "DS00022", "Prabhjyot",       "Sodhi",             "psodhi@datasafeguard.ai",       "employee",    5,   0,   0,  7,    date(2024, 1, 1)),
+            (21, "DS00023", "Tanmay",          "Arya",              "tarya@datasafeguard.ai",        "employee",    5,   0,   0,  7,    date(2024, 3, 1)),
+            (22, "DS00024", "Priyanka",        "Parab",             "pparab@datasafeguard.ai",       "employee",    5,   0,   0,  7,    date(2024, 5, 1)),
+            (23, "DS00025", "Sainaya",         "Brid",              "sbrid@datasafeguard.ai",        "employee",    5,   0,   0,  7,    date(2024, 7, 1)),
+            (24, "DS00026", "Trupti",          "Kokare",            "tkokare@datasafeguard.ai",      "employee",    5,   0,   0,  7,    date(2024, 9, 1)),
+            (25, "DS00027", "Nishant",         "Selote",            "nselote@datasafeguard.ai",      "employee",    5,   0,   0,  7,    date(2024, 11, 1)),
+            (26, "DS00028", "Yogesh",          "Kawtikwar",         "ykawtikwar@datasafeguard.ai",   "employee",    5,   0,   0,  7,    date(2025, 1, 1)),
+            (27, "DS00029", "Sudesna",         "Mishra",            "smishra@datasafeguard.ai",      "manager",     3,   0,   0,  8,    date(2025, 3, 1)),
+            (28, "DS00030", "Debjani",         "Mohanty",           "dmohanty@datasafeguard.ai",     "hr_admin",    6,   4,   0,  8,    date(2025, 5, 1)),
+            (29, "DS00031", "Rasmita",         "Swain",             "rswain@datasafeguard.ai",       "employee",    5,   0,   0,  27,   date(2025, 7, 1)),
+            (30, "DS00032", "Mousumi",         "Bhattacharya Dash", "sbh@datasafeguard.ai", "employee", 7, 0,   0,  2,    date(2025, 9, 1)),
+            (31, "DS00033", "Shubham",         "Pattanayak",        "spattanayak@datasafeguard.ai",  "employee",    5,   0,   0,  0,    date(2025, 11, 1)),
+            (32, "DS00034", "Swarnam",         "Dash",              "sdash@datasafeguard.ai",        "employee",    5,   0,   0,  0,    date(2026, 1, 1)),
+            (33, "DS00035", "Ritu",            "Mehta",             "rmehta@datasafeguard.ai",       "employee",    5,   0,   0,  5,    date(2026, 3, 1)),
         ]
 
         employees = []
-        for i, (first, last, esuffix, dept_idx, desig_idx, loc_idx, mgr_idx, user_idx, emp_type) in enumerate(emp_data):
-            email = f"{esuffix}@datasafeguard.us"
-            # Create user if not linked to existing user
-            if user_idx is not None:
-                uid = users[user_idx].id
-            else:
-                u = User(email=email, password_hash=hash_password("password123"), role="employee")
-                db.add(u)
-                db.flush()
-                uid = u.id
-
+        for (_, emp_id, first, last, email, role, desig_idx, dept_idx, loc_idx, mgr_idx, jdate) in emp_data:
+            u = User(email=email, password_hash=hash_password("Admin@123"), role=role, is_active=True)
+            db.add(u)
+            db.flush()
             emp = Employee(
-                user_id=uid,
-                employee_id=f"DS{i+1:05d}",
+                user_id=u.id,
+                employee_id=emp_id,
                 first_name=first,
                 last_name=last,
                 email=email,
-                phone=f"+1-555-{100+i:04d}",
-                department_id=depts[dept_idx].id,
                 designation_id=designations[desig_idx].id,
+                department_id=depts[dept_idx].id,
                 location_id=locations[loc_idx].id,
-                band=designations[desig_idx].band,
-                employment_type=emp_type,
-                joining_date=date(2020 + (i % 6), (i % 12) + 1, 1),
+                employment_type="full_time",
+                joining_date=jdate,
                 status="active",
             )
             db.add(emp)
@@ -184,13 +169,9 @@ def seed():
         db.flush()
 
         # Set manager relationships
-        for i, (_, _, _, _, _, _, mgr_idx, _, _) in enumerate(emp_data):
+        for i, (_, _, _, _, _, _, _, _, _, mgr_idx, _) in enumerate(emp_data):
             if mgr_idx is not None:
                 employees[i].manager_id = employees[mgr_idx].id
-
-        # Set department heads
-        depts[0].head_id = employees[3].id  # VP Eng heads Engineering
-        depts[3].head_id = employees[2].id  # HR Director heads HR
         db.flush()
 
         # ── Leave Types ──

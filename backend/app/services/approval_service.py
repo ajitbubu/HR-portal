@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 
 from sqlalchemy.orm import Session
 
@@ -6,8 +6,21 @@ from app.models.leave import LeaveRequest, LeaveApproval, LeaveStatus, ApprovalS
 from app.models.workflow import ApprovalWorkflow, ApprovalWorkflowStep, AssignedApprover
 from app.models.user import Employee
 from app.models.organization import Department
+from app.models.misc import DelegationSetting
 from app.services.leave_service import update_leave_balance_on_approve, update_leave_balance_on_reject
 from app.services.notification_service import create_notification
+
+
+def resolve_active_delegate(db: Session, approver_id: int) -> int:
+    """If the approver has an active delegation today, return the delegate's id instead."""
+    today = date.today()
+    delegation = db.query(DelegationSetting).filter(
+        DelegationSetting.delegator_id == approver_id,
+        DelegationSetting.is_active == True,
+        DelegationSetting.start_date <= today,
+        DelegationSetting.end_date >= today,
+    ).first()
+    return delegation.delegate_id if delegation else approver_id
 
 
 def resolve_workflow(db: Session, employee: Employee, leave_type_id: int) -> ApprovalWorkflow | None:
@@ -128,10 +141,11 @@ def create_approval_chain(
             )
         return
 
-    # Create approval entries for each step
+    # Create approval entries for each step (auto-route to delegate if approver is OOO)
     for step in workflow.steps:
         approver_id = resolve_approver_for_step(db, employee, step)
         if approver_id:
+            approver_id = resolve_active_delegate(db, approver_id)
             approval = LeaveApproval(
                 leave_request_id=leave_request.id,
                 approver_id=approver_id,

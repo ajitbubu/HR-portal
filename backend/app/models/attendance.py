@@ -16,6 +16,7 @@ class AttendanceRecord(Base):
     check_out = Column(Time)
     status = Column(String(20), default="present")  # present, absent, half_day, remote, holiday
     hours_worked = Column(Float, default=0)
+    late_minutes = Column(Integer, default=0)
     notes = Column(String(500))
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 

@@ -25,12 +25,20 @@ export interface Employee {
   designation?: { id: number; title: string; band?: string };
   location?: { id: number; name: string; city?: string };
   manager?: { id: number; first_name: string; last_name: string; employee_id: string };
+  team?: { id: number; name: string };
+  direct_reports?: { id: number; first_name: string; last_name: string; employee_id: string }[];
   band?: string;
   employment_type: string;
   status: string;
   joining_date: string;
   profile_photo?: string;
   created_at?: string;
+}
+
+export interface Team {
+  id: number;
+  name: string;
+  department_id?: number;
 }
 
 export interface EmployeeList {
@@ -153,6 +161,7 @@ export interface DashboardStats {
   total_employees: number;
   active_employees: number;
   on_leave_today: number;
+  absent_today: number;
   pending_approvals: number;
   new_hires_this_month: number;
   upcoming_holidays: number;
@@ -177,6 +186,8 @@ export interface OrgChartNode {
   designation?: string;
   department?: string;
   profile_photo?: string;
+  email?: string;
+  location?: string;
   children: OrgChartNode[];
 }
 
@@ -207,6 +218,50 @@ export interface Holiday {
   is_optional: boolean;
 }
 
+export interface ResignationActionLog {
+  id: number;
+  actor_id?: number;
+  action: string;
+  comments?: string;
+  old_status?: string;
+  new_status?: string;
+  created_at?: string;
+}
+
+export interface ResignationRequest {
+  id: number;
+  employee_id: number;
+  employee_name?: string;
+  employee_code?: string;
+  manager_name?: string;
+  department_name?: string;
+  location_name?: string;
+  country?: string;
+  resignation_date: string;
+  notice_period_days: number;
+  is_mandatory: boolean;
+  is_india_based: boolean;
+  expected_last_day: string;
+  actual_last_day?: string;
+  reason?: string;
+  status: string;
+  manager_action?: string;
+  manager_action_date?: string;
+  manager_comments?: string;
+  hr_notes?: string;
+  created_at?: string;
+  updated_at?: string;
+  action_logs?: ResignationActionLog[];
+}
+
+export interface NoticePeriodPreview {
+  notice_period_days: number;
+  is_mandatory: boolean;
+  is_india_based: boolean;
+  resignation_date: string;
+  expected_last_day: string;
+}
+
 export interface Workflow {
   id: number;
   name: string;
@@ -233,6 +288,7 @@ export interface AttendanceRecord {
   check_out?: string;
   status: string;
   hours_worked: number;
+  late_minutes?: number;
   notes?: string;
 }
 

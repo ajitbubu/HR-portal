@@ -3,8 +3,8 @@ import { AuthProvider } from "@/lib/auth";
 import "@/styles/globals.css";
 
 export const metadata: Metadata = {
-  title: "HR Portal - Enterprise Human Resources",
-  description: "Enterprise HR Management Platform",
+  title: "DataSafeguard HR Portal",
+  description: "DataSafeguard HR Portal - Enterprise Human Resources Management Platform",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
