@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class WorkflowStepCreate(BaseModel):
@@ -17,16 +17,17 @@ class WorkflowCreate(BaseModel):
 
 
 class WorkflowStepResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     step_order: int
     approver_role: str
     specific_approver_id: int | None = None
 
-    class Config:
-        from_attributes = True
-
 
 class WorkflowResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     department_id: int | None = None
@@ -35,9 +36,6 @@ class WorkflowResponse(BaseModel):
     is_default: bool
     is_active: bool
     steps: list[WorkflowStepResponse] = []
-
-    class Config:
-        from_attributes = True
 
 
 class AssignedApproverCreate(BaseModel):
@@ -48,12 +46,11 @@ class AssignedApproverCreate(BaseModel):
 
 
 class AssignedApproverResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     employee_id: int
     approver_id: int
     approver_type: str
     priority: int
     is_active: bool
-
-    class Config:
-        from_attributes = True

@@ -1,9 +1,13 @@
 """Test fixtures using SQLite file-based database."""
 
 import os
+import warnings
 
 # Set DATABASE_URL BEFORE any app imports so the app uses SQLite
 os.environ["DATABASE_URL"] = "sqlite:///./test.db"
+
+# Suppress httpx deprecation warning from FastAPI TestClient
+warnings.filterwarnings("ignore", message=".*shortcut is now deprecated.*Use the explicit style.*")
 
 import pytest
 from datetime import date
