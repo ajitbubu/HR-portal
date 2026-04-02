@@ -286,6 +286,11 @@ def take_weekly_action(
         raise HTTPException(status_code=404, detail="Weekly timesheet not found")
     if weekly.status != "submitted":
         raise HTTPException(status_code=400, detail="Can only act on submitted timesheets")
+    if current_user.role == "manager":
+        mgr_emp = db.query(Employee).filter(Employee.user_id == current_user.id).first()
+        subordinate_ids = [e.id for e in db.query(Employee).filter(Employee.manager_id == mgr_emp.id).all()] if mgr_emp else []
+        if weekly.employee_id not in subordinate_ids:
+            raise HTTPException(status_code=403, detail="Not authorized to act on this timesheet")
     result = approve_timesheet(db, weekly_id, current_user.id, data.action, data.comments)
     db.commit()
     db.refresh(result)

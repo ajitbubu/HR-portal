@@ -127,6 +127,12 @@ def get_claim(
     claim = db.query(ExpenseClaim).filter(ExpenseClaim.id == claim_id).first()
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
+    emp = db.query(Employee).filter(Employee.user_id == current_user.id).first()
+    if current_user.role not in ("super_admin", "hr_admin"):
+        if not emp or claim.employee_id != emp.id:
+            mgr_subordinates = [e.id for e in db.query(Employee).filter(Employee.manager_id == (emp.id if emp else -1)).all()]
+            if claim.employee_id not in mgr_subordinates:
+                raise HTTPException(status_code=403, detail="Not authorized to view this claim")
     return claim
 
 
@@ -214,6 +220,12 @@ def upload_receipt(
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
 
+    claim = db.query(ExpenseClaim).filter(ExpenseClaim.id == claim_id).first()
+    emp = db.query(Employee).filter(Employee.user_id == current_user.id).first()
+    if current_user.role not in ("super_admin", "hr_admin"):
+        if not claim or not emp or claim.employee_id != emp.id:
+            raise HTTPException(status_code=403, detail="Not authorized to upload receipt for this claim")
+
     allowed_ext = {"pdf", "jpg", "jpeg", "png"}
     safe_name = os.path.basename(file.filename or "receipt.pdf")
     ext = safe_name.rsplit(".", 1)[-1].lower() if "." in safe_name else ""
@@ -247,6 +259,14 @@ def take_action(
 ):
     if data.action not in ("approve", "reject"):
         raise HTTPException(status_code=400, detail="Action must be 'approve' or 'reject'")
+    claim = db.query(ExpenseClaim).filter(ExpenseClaim.id == claim_id).first()
+    if not claim:
+        raise HTTPException(status_code=404, detail="Claim not found")
+    if current_user.role == "manager":
+        mgr_emp = db.query(Employee).filter(Employee.user_id == current_user.id).first()
+        subordinate_ids = [e.id for e in db.query(Employee).filter(Employee.manager_id == mgr_emp.id).all()] if mgr_emp else []
+        if claim.employee_id not in subordinate_ids:
+            raise HTTPException(status_code=403, detail="Not authorized to act on this claim")
     try:
         claim = approve_claim(db, claim_id, current_user.id, data.action, data.reason)
     except ValueError as e:
