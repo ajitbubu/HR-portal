@@ -24,6 +24,10 @@ from app.models.leave import LeaveType, LeavePolicy, LeaveBalance
 from app.models.workflow import ApprovalWorkflow, ApprovalWorkflowStep
 from app.models.attendance import HolidayCalendar, Holiday
 from app.models.misc import CompanySetting
+from app.models.timesheet import Project, ProjectMember, TimesheetEntry
+from app.models.recruitment import JobPosting, Candidate, Interview
+from app.models.training import Course, Enrollment, Certification, LearningPath, LearningPathCourse, ComplianceAssignment
+from app.models.expense import ExpenseCategory, ExpenseClaim, ExpenseItem
 
 # SQLite for tests
 TEST_DATABASE_URL = "sqlite:///./test.db"
@@ -175,6 +179,81 @@ def seed_data(setup_database, db):
 
     # Company settings
     db.add(CompanySetting(key="company_name", value="Test Corp", category="general"))
+
+    # --- Timesheet & Projects ---
+    proj1 = Project(name="Project Alpha", code="ALPHA", client="Acme Corp", status="active",
+                    start_date=date(2026, 1, 1), end_date=date(2026, 12, 31),
+                    budget_hours=1000, manager_id=mgr_emp.id, department_id=dept_eng.id, is_billable=True)
+    proj2 = Project(name="Project Beta", code="BETA", client="Beta Inc", status="planning",
+                    budget_hours=500, department_id=dept_eng.id, is_billable=False)
+    db.add_all([proj1, proj2])
+    db.flush()
+
+    db.add(ProjectMember(project_id=proj1.id, employee_id=emp_emp.id, role="member"))
+    db.add(ProjectMember(project_id=proj1.id, employee_id=mgr_emp.id, role="lead"))
+    db.flush()
+
+    for i, d in enumerate([date(2026, 3, 2), date(2026, 3, 3), date(2026, 3, 4), date(2026, 3, 5), date(2026, 3, 6)]):
+        db.add(TimesheetEntry(employee_id=emp_emp.id, project_id=proj1.id, date=d,
+                              hours=8.0 + (1 if i == 4 else 0), description=f"Day {i+1} work",
+                              is_billable=True, is_overtime=(i == 4)))
+
+    # --- Recruitment ---
+    posting = JobPosting(title="Senior Engineer", department_id=dept_eng.id, location_id=loc_sf.id,
+                         description="We need a senior engineer", requirements="5+ years experience",
+                         salary_min=120000, salary_max=180000, status="open",
+                         posted_by_id=hr_emp.id, positions_count=2)
+    db.add(posting)
+    db.flush()
+
+    cand1 = Candidate(job_posting_id=posting.id, first_name="Alice", last_name="Johnson",
+                      email="alice@example.com", phone="555-0101", source="linkedin", status="screening")
+    cand2 = Candidate(job_posting_id=posting.id, first_name="Bob", last_name="Smith",
+                      email="bob@example.com", phone="555-0102", source="referral", status="interview")
+    db.add_all([cand1, cand2])
+    db.flush()
+
+    from datetime import datetime, timezone
+    db.add(Interview(candidate_id=cand2.id, interviewer_id=mgr_emp.id,
+                     scheduled_at=datetime(2026, 4, 15, 10, 0, tzinfo=timezone.utc),
+                     interview_type="video", duration_minutes=60, status="scheduled"))
+
+    # --- Training ---
+    course1 = Course(title="Python Advanced", description="Advanced Python topics", category="Technical",
+                     duration_hours=20, format="online", instructor="Dr. Smith", max_participants=30)
+    course2 = Course(title="Security Awareness", description="Mandatory security training",
+                     category="Compliance", duration_hours=2, format="online", is_mandatory=True)
+    db.add_all([course1, course2])
+    db.flush()
+
+    db.add(Enrollment(employee_id=emp_emp.id, course_id=course1.id, status="in_progress", progress=50))
+
+    cert1 = Certification(name="AWS Solutions Architect", issuing_body="Amazon", validity_months=36)
+    db.add(cert1)
+    db.flush()
+
+    lp = LearningPath(name="Engineering Track", description="Path for engineers", target_role="Engineer")
+    db.add(lp)
+    db.flush()
+    db.add(LearningPathCourse(learning_path_id=lp.id, course_id=course1.id, sequence_order=1))
+    db.add(LearningPathCourse(learning_path_id=lp.id, course_id=course2.id, sequence_order=2))
+
+    db.add(ComplianceAssignment(employee_id=emp_emp.id, course_id=course2.id, due_date=date(2026, 6, 30)))
+
+    # --- Expenses ---
+    cat_travel = ExpenseCategory(name="Travel", code="TRV", description="Travel expenses", max_amount=5000, requires_receipt=True)
+    cat_meals = ExpenseCategory(name="Meals", code="MEL", description="Meal expenses", max_amount=100, requires_receipt=True)
+    cat_supplies = ExpenseCategory(name="Supplies", code="SUP", description="Office supplies", max_amount=500, requires_receipt=False)
+    db.add_all([cat_travel, cat_meals, cat_supplies])
+    db.flush()
+
+    claim1 = ExpenseClaim(employee_id=emp_emp.id, title="March Travel", description="Client visit", currency="USD")
+    db.add(claim1)
+    db.flush()
+    db.add(ExpenseItem(claim_id=claim1.id, category_id=cat_travel.id, amount=450.00, date=date(2026, 3, 10), description="Flight"))
+    db.add(ExpenseItem(claim_id=claim1.id, category_id=cat_meals.id, amount=35.50, date=date(2026, 3, 10), description="Lunch"))
+    db.flush()
+    claim1.total_amount = 485.50
 
     db.commit()
     yield
