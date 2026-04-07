@@ -234,9 +234,11 @@ def get_banner(db: Session = Depends(get_db)):
         row = db.query(CompanySetting).filter(CompanySetting.key == key).first()
         return row.value if (row and row.value is not None) else default
 
+    VALID_TYPES = ("info", "warning", "critical", "success")
+    raw_type = _get("banner.type", "info")
     return BannerResponse(
         enabled=_get("banner.enabled", "false") == "true",
-        type=_get("banner.type", "info"),
+        type=raw_type if raw_type in VALID_TYPES else "info",
         message=_get("banner.message", ""),
     )
 

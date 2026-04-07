@@ -32,7 +32,7 @@ export function BannerProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     fetch(`${API_BASE}/admin/banner`)
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
       .then((d) => {
         setEnabled(d.enabled ?? false);
         setType(d.type ?? "info");

@@ -206,12 +206,12 @@ export default function Sidebar() {
         />
       )}
     <aside
-      className={`fixed left-0 h-screen flex flex-col z-30 bg-slate-900 border-r border-slate-700/50 transition-all duration-300
+      className={`fixed left-0 flex flex-col z-30 bg-slate-900 border-r border-slate-700/50 transition-all duration-300
         ${collapsed ? "md:w-16" : "md:w-60"}
         w-60
         ${mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
       `}
-      style={{ top: "var(--banner-h, 0px)" }}
+      style={{ top: "var(--banner-h, 0px)", height: "calc(100vh - var(--banner-h, 0px))" }}
     >
       {/* Logo */}
       <div className={`flex items-center h-14 border-b border-slate-700/50 px-3 ${collapsed ? "justify-center" : ""}`}>

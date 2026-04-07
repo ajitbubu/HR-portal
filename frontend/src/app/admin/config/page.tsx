@@ -70,7 +70,7 @@ export default function AdminConfigPage() {
   useEffect(() => {
     const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
     fetch(`${apiBase}/admin/banner`)
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
       .then((d) => {
         setBannerEnabled(d.enabled ?? false);
         setBannerType(d.type ?? "info");
