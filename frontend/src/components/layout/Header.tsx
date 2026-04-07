@@ -103,7 +103,7 @@ export default function Header({ title }: { title: string }) {
   };
 
   return (
-    <header className="h-16 bg-white/80 backdrop-blur-md border-b border-gray-100 flex items-center justify-between px-4 md:px-6 sticky top-0 z-20">
+    <header className="h-16 bg-white/80 backdrop-blur-md border-b border-gray-100 flex items-center justify-between px-4 md:px-6 sticky z-20" style={{ top: "var(--banner-h, 0px)" }}>
       <div className="flex items-center gap-3">
         {/* Hamburger — mobile only */}
         <button

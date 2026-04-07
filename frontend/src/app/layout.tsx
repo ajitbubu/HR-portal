@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { AuthProvider } from "@/lib/auth";
+import { FeaturesProvider } from "@/contexts/FeaturesContext";
+import { BannerProvider } from "@/contexts/BannerContext";
+import AnnouncementBanner from "@/components/layout/AnnouncementBanner";
 import "@/styles/globals.css";
 
 export const metadata: Metadata = {
@@ -11,7 +14,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <FeaturesProvider>
+            <BannerProvider>
+              <AnnouncementBanner />
+              {children}
+            </BannerProvider>
+          </FeaturesProvider>
+        </AuthProvider>
       </body>
     </html>
   );

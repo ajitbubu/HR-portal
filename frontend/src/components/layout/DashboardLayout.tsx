@@ -6,10 +6,12 @@ import { useEffect } from "react";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 import { SidebarProvider, useSidebar } from "./SidebarContext";
+import { useBanner } from "@/contexts/BannerContext";
 
 function Layout({ children, title }: { children: React.ReactNode; title: string }) {
   const { user, loading } = useAuth();
   const { collapsed } = useSidebar();
+  const { bannerHeight } = useBanner();
   const router = useRouter();
 
   useEffect(() => {
@@ -29,7 +31,7 @@ function Layout({ children, title }: { children: React.ReactNode; title: string 
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50" style={{ paddingTop: bannerHeight }}>
       <Sidebar />
       {/* Mobile: no left margin. Desktop: margin matches sidebar width */}
       <div className={`transition-all duration-300 ${collapsed ? "md:ml-16" : "md:ml-60"}`}>
