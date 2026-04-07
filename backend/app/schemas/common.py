@@ -140,6 +140,14 @@ class CompanySettingResponse(BaseModel):
     description: str | None = None
 
 
+class BannerResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    enabled: bool
+    type: str
+    message: str
+
+
 class OnboardingTaskCreate(BaseModel):
     employee_id: int
     title: str

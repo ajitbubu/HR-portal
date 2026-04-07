@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.dependencies import require_roles
+from app.core.dependencies import require_roles, get_current_user
 from app.models.user import User
 from app.models.organization import Department, BusinessUnit, Location, Designation, Team
 from app.models.leave import LeaveType, LeavePolicy, LeaveBalance
@@ -17,7 +17,7 @@ from app.schemas.leave import LeaveTypeCreate, LeaveTypeResponse, LeavePolicyCre
 from app.schemas.workflow import (
     WorkflowCreate, WorkflowResponse, AssignedApproverCreate, AssignedApproverResponse,
 )
-from app.schemas.common import CompanySettingUpdate, CompanySettingResponse
+from app.schemas.common import CompanySettingUpdate, CompanySettingResponse, BannerResponse
 from app.services.audit_service import log_audit
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
@@ -220,6 +220,27 @@ def remove_assigned_approver(approver_assignment_id: int, db: Session = Depends(
 
 
 # --- Company Settings ---
+@router.get("/features")
+def get_features(db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+    """Return feature flags as {module: bool} — any authenticated user can read."""
+    rows = db.query(CompanySetting).filter(CompanySetting.category == "features").all()
+    return {r.key.replace("feature.", ""): r.value != "false" for r in rows}
+
+
+@router.get("/banner", response_model=BannerResponse)
+def get_banner(db: Session = Depends(get_db)):
+    """Public endpoint — no auth required so the banner can show on the login page."""
+    def _get(key: str, default: str) -> str:
+        row = db.query(CompanySetting).filter(CompanySetting.key == key).first()
+        return row.value if (row and row.value is not None) else default
+
+    return BannerResponse(
+        enabled=_get("banner.enabled", "false") == "true",
+        type=_get("banner.type", "info"),
+        message=_get("banner.message", ""),
+    )
+
+
 @router.get("/settings", response_model=list[CompanySettingResponse])
 def list_settings(db: Session = Depends(get_db), _: User = Depends(require_roles("super_admin", "hr_admin"))):
     return db.query(CompanySetting).all()
