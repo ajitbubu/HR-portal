@@ -31,14 +31,15 @@ services:
       DATABASE_URL: postgresql://hruser:hrpass@db:5432/datasafeguard_hr
       SECRET_KEY: datasafeguard-hr-production-secret-key
       CORS_ORIGINS: '["http://localhost:3000"]'
-      # Mailpit SMTP — set MAIL_ENABLED=true to capture emails locally
+      # Microsoft 365 SMTP — set MAIL_ENABLED=true and fill credentials for real email.
+      # For local testing keep MAIL_ENABLED=false and use the mailpit service (localhost:8025).
       MAIL_ENABLED: "false"
-      MAIL_SERVER: mailpit
-      MAIL_PORT: "1025"
-      MAIL_USERNAME: ""
-      MAIL_PASSWORD: ""
+      MAIL_SERVER: smtp.office365.com
+      MAIL_PORT: "587"
+      MAIL_USERNAME: "hr@datasafeguard.ai"
+      MAIL_PASSWORD: ""          # set your Microsoft 365 password / app password here
       MAIL_FROM: hr@datasafeguard.ai
-      MAIL_STARTTLS: "false"
+      MAIL_STARTTLS: "true"
       MAIL_SSL_TLS: "false"
     depends_on:
       db:

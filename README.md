@@ -156,24 +156,40 @@ The system sends emails for every approval event:
 | Delegated | Delegate | Approve ✓ / Reject ✗ inline buttons |
 | Pending reminder | Approver | Reminder after 1, 3, 7 days |
 
-### Gmail SMTP
+### Microsoft 365 / Outlook SMTP (primary)
 
 ```bash
-# In backend/.env or docker-compose.yml:
+# In backend/.env (or docker-compose.yml environment section):
 MAIL_ENABLED=true
-MAIL_SERVER=smtp.gmail.com
+MAIL_SERVER=smtp.office365.com
 MAIL_PORT=587
-MAIL_USERNAME=your@gmail.com
-MAIL_PASSWORD=xxxx-xxxx-xxxx-xxxx   # Gmail App Password (not your login password)
-MAIL_FROM=your@gmail.com
+MAIL_USERNAME=hr@datasafeguard.ai       # the M365 mailbox that sends emails
+MAIL_PASSWORD=your-microsoft-365-password
+MAIL_FROM=hr@datasafeguard.ai
+MAIL_FROM_NAME=DataSafeguard HR
 MAIL_STARTTLS=true
 MAIL_SSL_TLS=false
 APP_BASE_URL=https://your-domain.com
 ```
 
-> Generate an App Password at <https://myaccount.google.com/apppasswords> (requires 2FA enabled).
+> **Microsoft 365 requirements:**
+> The mailbox (`MAIL_USERNAME`) must have an active M365 licence.
+> SMTP AUTH must be enabled for the mailbox — check in the M365 admin centre under *Users → Active users → [mailbox] → Mail → Manage email apps → Authenticated SMTP*.
+> If your tenant enforces MFA, create an **App Password** under the account's security settings and use that as `MAIL_PASSWORD`.
+> Tenant-level SMTP AUTH must also be on: *Admin centre → Settings → Org settings → Modern authentication*.
 
-### Amazon SES
+### Personal Outlook / Hotmail
+
+```bash
+MAIL_SERVER=smtp-mail.outlook.com
+MAIL_PORT=587
+MAIL_USERNAME=hr@outlook.com
+MAIL_PASSWORD=your-password-or-app-password
+MAIL_STARTTLS=true
+MAIL_SSL_TLS=false
+```
+
+### Amazon SES (alternative)
 
 ```bash
 MAIL_SERVER=email-smtp.us-east-1.amazonaws.com
