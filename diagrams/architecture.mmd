@@ -1,27 +1,33 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#1A77F2', 'primaryTextColor': '#fff', 'primaryBorderColor': '#1557B0', 'lineColor': '#64748b'}}}%%
+
 graph TB
     subgraph Client["Client Browser"]
         UI["Next.js 14 Frontend\n(React + TypeScript)\nPort 3000"]
     end
 
     subgraph Frontend["Frontend src/"]
-        Pages["Pages / Routes\n/dashboard\n/employees\n/leave\n/approvals\n/attendance\n/salary\n/documents\n/reports\n/org-chart\n/onboarding\n/announcements\n/admin\n/profile"]
-        Components["Components\nSidebar · Header\nDashboardLayout\nDataTable · StatsCard\nAvatar · ProfileAvatar"]
-        Lib["Lib\napi.ts · auth.tsx\nuseApi hook"]
+        Pages["Pages / Routes\n/dashboard · /employees · /directory\n/leave · /leave/comp-off · /leave/org-balance\n/wfh · /approvals · /attendance\n/timesheets · /expenses · /salary\n/recruitment · /training · /resignation\n/documents · /reports · /org-chart\n/onboarding · /announcements\n/performance · /admin · /profile"]
+        Components["Components\nSidebar · Header · DashboardLayout\nDataTable · StatsCard · Avatar\nProfileAvatar · BannerContext\nFeaturesContext · SidebarContext"]
+        Lib["Lib\napi.ts · auth.tsx\nuseApi hook · middleware.ts"]
     end
 
     subgraph Backend["FastAPI Backend\nPython 3.12 · Port 8000"]
         Auth["Auth\nJWT + bcrypt\nRole-based Access\n5 Roles"]
-        Endpoints["API Endpoints /api/\nauth · employees · leave\napprovals · admin · salary\nattendance · documents\nnotifications · dashboard\norg-chart · announcements\naudit · reports · onboarding\nholidays · hr-tickets\nperformance"]
-        Services["Services\nemployee_service\nleave_service\napproval_service\nnotification_service\naudit_service"]
-        Models["Models\nUser · Employee\nOrganization · Leave\nSalary · Attendance\nDocument · Workflow\nNotification · Audit\nAnnouncement · Misc"]
+        Endpoints["API Endpoints /api/ (25)\nauth · employees · leave · approvals\nadmin · salary · attendance · documents\nnotifications · dashboard · org-chart\nannouncements · audit · reports\nonboarding · holidays · hr-tickets\nperformance · wfh · timesheets\nexpenses · recruitment · training\nresignation · delegations"]
+        Services["Services\nemployee_service · leave_service\napproval_service · notification_service\naudit_service · timesheet_service\nexpense_service · recruitment_service\ntraining_service · resignation_service\nemail_service · scheduler"]
+        Models["Models (25+ tables)\nUser · Employee · Organization\nLeave · LeaveBalance · CompOff\nWFH · Project · TimesheetEntry\nExpense · JobPosting · Candidate\nCourse · Enrollment · Resignation\nSalary · Attendance · Document\nWorkflow · FirstApproverPolicy\nNotification · Audit · Misc"]
+    end
+
+    subgraph Scheduler["APScheduler (Background)"]
+        Crons["Cron Jobs\n1st of month — monthly accrual\nJan 1 — carry-forward processing\nApr 1 — carry-forward expiry\nDaily — birthday / anniversary leave\nHourly — approval reminders"]
     end
 
     subgraph Database["PostgreSQL 16\nPort 5432"]
-        Tables["Core Tables\nusers · employees\ndepartments · designations\nlocations · business_units\nleave_requests · leave_types\nleave_balances · leave_approvals\nsalary_history · attendance_records\ndocuments · workflows\nnotifications · audit_logs\nannouncements · onboarding_tasks\nholidays · hr_tickets\nperformance_reviews\ncompany_settings"]
+        Tables["Core Tables (35+)\nusers · employees · departments\ndesignations · locations · teams\nbusiness_units · leave_requests\nleave_types · leave_balances\nleave_approvals · leave_policies\ncomp_off_grants · wfh_requests\nwfh_policies · projects\ntimesheet_entries · expense_claims\njob_postings · candidates\ncourses · enrollments\nresignation_requests · salary_history\nattendance_records · documents\nworkflows · first_approver_policies\nnotifications · audit_logs\nannouncements · company_settings\ndelegation_settings · hr_tickets\nperformance_reviews · onboarding_tasks"]
     end
 
     subgraph Storage["File Storage\n/uploads volume"]
-        Files["Profile Photos\nEmployee Documents\nBulk Import Files"]
+        Files["Profile Photos\nEmployee Documents\nMedical Certificates\nExpense Receipts\nBulk Import Files"]
     end
 
     subgraph Docker["Docker Compose"]
@@ -39,6 +45,8 @@ graph TB
     Services --> Models
     Models -->|"SQLAlchemy ORM"| Database
     Endpoints -->|"File upload/download"| Storage
+    Scheduler -->|"DB reads/writes"| Database
+    Services --> Scheduler
 
     DC_FE --> UI
     DC_BE --> Backend

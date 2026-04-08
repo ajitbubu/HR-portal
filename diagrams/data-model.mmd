@@ -24,7 +24,9 @@ erDiagram
         string employment_type
         string status
         date joining_date
+        date date_of_birth
         string band
+        string profile_photo
     }
 
     departments {
@@ -41,18 +43,27 @@ erDiagram
         int lead_id FK
     }
 
-    designations {
-        int id PK
-        string title
-        string band
-        int level
-    }
-
-    locations {
+    leave_types {
         int id PK
         string name
-        string city
-        string country
+        string code
+        float default_days
+        bool is_paid
+        bool carry_forward
+        float max_carry_forward_days
+        bool requires_document
+        bool is_active
+    }
+
+    leave_policies {
+        int id PK
+        string name
+        int leave_type_id FK
+        string accrual_type
+        float accrual_amount
+        float max_balance
+        float max_carry_forward
+        bool is_active
     }
 
     leave_requests {
@@ -62,16 +73,12 @@ erDiagram
         date start_date
         date end_date
         float total_days
+        bool is_half_day
+        string half_day_type
+        string reason
+        string attachment_path
         string status
         int current_approval_step
-    }
-
-    leave_types {
-        int id PK
-        string name
-        bool is_paid
-        bool carry_forward
-        int default_days
     }
 
     leave_balances {
@@ -83,6 +90,7 @@ erDiagram
         float used
         float pending
         float carried_forward
+        float accrued_this_year
     }
 
     leave_approvals {
@@ -95,12 +103,170 @@ erDiagram
         datetime acted_at
     }
 
+    comp_off_grants {
+        int id PK
+        int employee_id FK
+        date work_date
+        float hours_worked
+        float days_granted
+        string reason
+        string status
+        date expires_at
+        int approved_by FK
+    }
+
+    first_approver_policies {
+        int id PK
+        string name
+        string mode
+        int department_id FK
+        int fixed_approver_id FK
+        bool is_active
+    }
+
     approval_workflows {
         int id PK
         string name
         int department_id FK
         int leave_type_id FK
+        string band
         bool is_default
+        bool is_active
+    }
+
+    wfh_requests {
+        int id PK
+        int employee_id FK
+        date request_date
+        date end_date
+        string wfh_type
+        string reason
+        string status
+        int approved_by FK
+        datetime approved_at
+    }
+
+    wfh_policies {
+        int id PK
+        string name
+        int max_days_per_week
+        int max_days_per_month
+        bool requires_manager_approval
+        bool is_active
+    }
+
+    projects {
+        int id PK
+        string name
+        string code
+        string client
+        string status
+        float budget_hours
+        int manager_id FK
+        int department_id FK
+        bool is_billable
+    }
+
+    timesheet_entries {
+        int id PK
+        int employee_id FK
+        int project_id FK
+        date entry_date
+        float hours_worked
+        float overtime_hours
+        string task_description
+        string status
+        bool is_billable
+    }
+
+    expense_categories {
+        int id PK
+        string name
+        string code
+        float max_amount
+        bool requires_receipt
+        bool is_active
+    }
+
+    expense_claims {
+        int id PK
+        int employee_id FK
+        string title
+        float total_amount
+        string currency
+        string status
+        int approved_by FK
+    }
+
+    job_postings {
+        int id PK
+        string title
+        int department_id FK
+        string status
+        int openings
+        string experience_required
+        date closing_date
+        int created_by FK
+    }
+
+    candidates {
+        int id PK
+        int job_posting_id FK
+        string first_name
+        string last_name
+        string email
+        string status
+        int rating
+        string source
+    }
+
+    courses {
+        int id PK
+        string title
+        string description
+        string format
+        float duration_hours
+        bool is_mandatory
+        string category
+    }
+
+    enrollments {
+        int id PK
+        int employee_id FK
+        int course_id FK
+        string status
+        float progress_pct
+        datetime completed_at
+    }
+
+    resignation_requests {
+        int id PK
+        int employee_id FK
+        date resignation_date
+        date last_working_day
+        string reason
+        string status
+        int notice_period_days
+    }
+
+    salary_history {
+        int id PK
+        int employee_id FK
+        float gross_salary
+        string currency
+        string pay_grade
+        date effective_date
+        string change_reason
+    }
+
+    attendance_records {
+        int id PK
+        int employee_id FK
+        date date
+        datetime check_in
+        datetime check_out
+        float hours_worked
+        string status
     }
 
     notifications {
@@ -123,6 +289,16 @@ erDiagram
         text new_values
     }
 
+    delegation_settings {
+        int id PK
+        int delegator_id FK
+        int delegate_id FK
+        date start_date
+        date end_date
+        bool is_active
+    }
+
+    %% Core relationships
     users ||--o| employees : "has profile"
     employees }o--|| departments : "belongs to"
     employees }o--|| designations : "has title"
@@ -131,11 +307,43 @@ erDiagram
     employees }o--o| employees : "reports to (manager)"
     departments }o--|| employees : "headed by"
     teams }o--|| departments : "part of"
+
+    %% Leave
     leave_requests }o--|| employees : "submitted by"
     leave_requests }o--|| leave_types : "of type"
     leave_approvals }o--|| leave_requests : "approves"
     leave_approvals }o--|| employees : "approved by"
     leave_balances }o--|| employees : "belongs to"
     leave_balances }o--|| leave_types : "for type"
+    leave_policies }o--|| leave_types : "governs"
+    comp_off_grants }o--|| employees : "granted to"
+    first_approver_policies }o--o| departments : "scoped to"
+    approval_workflows }o--o| departments : "scoped to"
+    approval_workflows }o--o| leave_types : "for type"
+
+    %% WFH
+    wfh_requests }o--|| employees : "submitted by"
+
+    %% Work
+    timesheet_entries }o--|| employees : "logged by"
+    timesheet_entries }o--|| projects : "for project"
+    expense_claims }o--|| employees : "submitted by"
+
+    %% Recruitment
+    candidates }o--|| job_postings : "applied for"
+    job_postings }o--|| departments : "in department"
+
+    %% Training
+    enrollments }o--|| employees : "enrolled by"
+    enrollments }o--|| courses : "for course"
+
+    %% HR
+    resignation_requests }o--|| employees : "submitted by"
+    salary_history }o--|| employees : "belongs to"
+    attendance_records }o--|| employees : "belongs to"
+    delegation_settings }o--|| employees : "delegated by"
+    delegation_settings }o--|| employees : "delegated to"
+
+    %% System
     notifications }o--|| users : "sent to"
     audit_logs }o--|| users : "performed by"

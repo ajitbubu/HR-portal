@@ -11,22 +11,28 @@ graph LR
 
     subgraph FrontendComponents["Frontend Components"]
         subgraph Layout["Layout"]
-            SB["Sidebar\n(collapsible, role-filtered nav)"]
-            HD["Header\n(notification bell, user info)"]
+            SB["Sidebar\n(collapsible, role-filtered,\nmobile overlay)"]
+            HD["Header\n(hamburger, bell, user info)"]
             DL["DashboardLayout\n(auth guard + layout wrapper)"]
+            MW["middleware.ts\n(Next.js server-side\nroute protection)"]
         end
 
         subgraph UIComp["UI Components"]
             PA["ProfileAvatar\n(photo upload on hover — HR only)"]
-            DT["DataTable\n(sortable, paginated)"]
             SC["StatsCard\n(dashboard metrics)"]
             AV["Avatar\n(initials / photo)"]
         end
 
+        subgraph Contexts["Contexts"]
+            AC["AuthContext\nuser · login · logout · isRole()"]
+            FC["FeaturesContext\nisEnabled() — module flags"]
+            BC["BannerContext\nbannerHeight — top offset"]
+            SC2["SidebarContext\ncollapsed · mobileOpen"]
+        end
+
         subgraph Hooks["Hooks & Lib"]
             UA["useApi()\nfetch + loading + error + refetch"]
-            AC["AuthContext\nuser · login · logout · isRole()"]
-            AP2["api.ts\nget · post · put · delete · upload"]
+            API2["api.ts\nget · post · put · delete · upload"]
         end
     end
 
@@ -38,35 +44,39 @@ graph LR
             DEP["dependencies.py\nget_current_user + require_roles"]
         end
 
-        subgraph APILayer["API Routers (18)"]
+        subgraph APILayer["API Routers (25)"]
             AuthR["auth\nlogin · register · me"]
             EmpR["employees\nCRUD · photo · bulk import"]
-            LeaveR["leave\napply · balance · calendar"]
+            LeaveR["leave\napply · balance · calendar\ncomp-off · first-approver-config"]
             ApprR["approvals\npending · approve · reject\ndelegate · send back"]
-            AdminR["admin\ndepts · teams · designations\nlocations · leave types\nworkflows · settings"]
-            OtherR["salary · attendance\ndocuments · notifications\ndashboard · org-chart\nannouncements · audit\nreports · onboarding\nholidays · hr-tickets\nperformance"]
+            AdminR["admin\ndepts · teams · designations\nlocations · leave types\nworkflows · first-approver-policies\nfeature flags · settings"]
+            NewR["wfh · timesheets · expenses\nrecruitment · training\nresignation · salary\ndelegations · reports"]
+            OtherR["attendance · documents\nnotifications · dashboard\norg-chart · announcements\naudit · onboarding\nholidays · hr-tickets\nperformance"]
         end
 
-        subgraph ServiceLayer["Services"]
+        subgraph ServiceLayer["Services (12)"]
             EmpSvc["employee_service\nID gen · search · import"]
-            LeaveSvc["leave_service\ndays calc · balance check\nbalance updates"]
-            ApprSvc["approval_service\nworkflow resolve\napprover resolve\nchain create · action process"]
-            NotifSvc["notification_service\ncreate · leave chain\nHR admins · all users"]
+            LeaveSvc["leave_service\ndays calc · balance check\naccrual · carry-forward"]
+            ApprSvc["approval_service\nworkflow resolve\nfirst-approver-policy resolve\nchain create · action process"]
+            NotifSvc["notification_service\ncreate · leave chain · HR admins"]
             AuditSvc["audit_service\nlog all actions"]
+            NewSvc["timesheet_service\nexpense_service\nrecruitment_service\ntraining_service\nresignation_service"]
+            InfraSvc["email_service\nscheduler\n(APScheduler cron jobs)"]
         end
 
-        subgraph ModelLayer["ORM Models (20+ tables)"]
+        subgraph ModelLayer["ORM Models (35+ tables)"]
             UserMod["User · Employee"]
             OrgMod["Department · Team\nDesignation · Location\nBusinessUnit"]
-            LeaveMod["LeaveRequest · LeaveType\nLeaveBalance · LeaveApproval\nLeavePolicy"]
-            WFMod["ApprovalWorkflow\nWorkflowStep · AssignedApprover"]
-            MiscMod["Notification · AuditLog\nAnnouncement · Document\nSalaryHistory · Attendance\nHoliday · HRTicket\nOnboarding · Performance"]
+            LeaveMod["LeaveRequest · LeaveType\nLeaveBalance · LeaveApproval\nLeavePolicy · CompOffGrant"]
+            WFMod["ApprovalWorkflow · WorkflowStep\nAssignedApprover\nFirstApproverPolicy"]
+            NewMod["WFHRequest · WFHPolicy\nProject · TimesheetEntry\nExpenseClaim · ExpenseCategory\nJobPosting · Candidate · Interview\nCourse · Enrollment · Certification\nResignationRequest\nSalaryHistory · AttendanceRecord"]
+            MiscMod["Notification · AuditLog\nAnnouncement · Document\nHoliday · HRTicket\nDelegationSetting\nOnboardingTask · Performance\nCompanySetting"]
         end
     end
 
     subgraph DataLayer["Data Layer"]
         PG[("PostgreSQL 16\ndatasafeguard_hr")]
-        FS["File Storage\n/uploads\nprofile-photos/\ndocuments/"]
+        FS["File Storage\n/uploads\nprofile-photos/\ndocuments/\nmedical-certs/\nexpense-receipts/"]
     end
 
     %% Role → Frontend access
@@ -76,12 +86,14 @@ graph LR
 
     %% Frontend internal
     DL --> SB & HD
-    HD --> AP2
-    UA --> AP2
-    AC --> AP2
+    MW -->|"server route guard"| DL
+    HD --> API2
+    UA --> API2
+    AC --> API2
+    FC --> SB
 
     %% Frontend → Backend
-    AP2 -->|"REST + JWT"| DEP
+    API2 -->|"REST + JWT"| DEP
 
     %% Backend internal
     DEP --> APILayer

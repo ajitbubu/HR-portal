@@ -2,12 +2,21 @@
 
 sequenceDiagram
     actor User
+    participant MW as Next.js Middleware
     participant FE as Frontend (Next.js)
     participant Auth as AuthContext
     participant API as FastAPI /auth
     participant DB as PostgreSQL
 
-    User->>FE: Open app
+    User->>FE: Navigate to any protected route
+    FE->>MW: middleware.ts intercepts request
+    MW->>MW: Check access_token in localStorage\n(via cookie forwarded by browser)
+    alt No token — unauthenticated route access
+        MW-->>FE: Redirect to /login
+    else Token present — allow through
+        MW-->>FE: Pass request to page
+    end
+
     FE->>Auth: Check localStorage for access_token
     alt Token exists
         Auth->>API: GET /api/auth/me (Bearer token)
@@ -15,9 +24,9 @@ sequenceDiagram
         API->>DB: Query users WHERE id = user_id
         DB-->>API: User record
         API-->>Auth: {id, email, role, employee_id, name}
-        Auth-->>FE: User logged in → redirect /dashboard
+        Auth-->>FE: User logged in → render page
     else No token
-        Auth-->>FE: Not authenticated → show /login
+        Auth-->>FE: Not authenticated → redirect /login
     end
 
     User->>FE: Enter email + password → Sign In
@@ -30,7 +39,7 @@ sequenceDiagram
         API->>API: Create JWT (expires 480 min)
         API-->>FE: {access_token, role, employee_id, name}
         FE->>Auth: Store token in localStorage
-        Auth->>FE: Set user state
+        Auth->>FE: Set user state + load FeaturesContext
         FE-->>User: Redirect to /dashboard
     else Invalid credentials
         API-->>FE: 401 Unauthorized
@@ -40,15 +49,24 @@ sequenceDiagram
     Note over FE,API: Every subsequent API request
     FE->>API: Any request + Authorization: Bearer {token}
     API->>API: get_current_user() → decode JWT
-    API->>API: require_roles() → check user.role
+    API->>API: require_roles([...]) → check user.role
     alt Role allowed
         API-->>FE: 200 + data
     else Role not allowed
         API-->>FE: 403 Forbidden
+        FE-->>User: Access denied / redirect
     end
+
+    Note over FE,Auth: Feature flag check (per module)
+    FE->>Auth: isEnabled("leave") via FeaturesContext
+    Auth->>API: GET /api/admin/config/features (cached)
+    API->>DB: Query company_settings WHERE key LIKE 'feature_%'
+    DB-->>API: Feature flags
+    API-->>Auth: {leave: true, wfh: true, timesheets: true, ...}
+    Auth-->>FE: Show / hide nav items and pages
 
     User->>FE: Click Sign Out
     FE->>Auth: logout()
     Auth->>FE: Remove token from localStorage
-    Auth->>FE: Clear user state
+    Auth->>FE: Clear user state + feature flags
     FE-->>User: Redirect to /login

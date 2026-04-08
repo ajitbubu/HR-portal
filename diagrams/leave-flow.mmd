@@ -4,16 +4,33 @@ sequenceDiagram
     actor Emp as Employee
     participant FE as Frontend
     participant API as FastAPI /leave/apply
+    participant FAP as approval_service<br/>first_approver_policy
     participant LS as leave_service
     participant AS as approval_service
     participant NS as notification_service
     participant DB as PostgreSQL
-    actor Mgr1 as L1 Manager
+    actor Mgr1 as L1 Approver
     actor Mgr2 as L2 Manager
     actor HR as HR Admin
 
+    Emp->>FE: GET /leave/first-approver-config
+    FE->>API: GET /api/leave/first-approver-config
+    API->>FAP: resolve_first_approver_from_policy(employee)
+    FAP->>DB: Query first_approver_policies (dept-specific → global → default)
+    DB-->>FAP: Policy record
+    FAP-->>API: {mode, fixed_approver_id, eligible_approvers}
+    API-->>FE: Config response
+
+    alt mode = employee_choice
+        FE-->>Emp: Show approver dropdown
+    else mode = fixed / manager / department_head
+        FE-->>Emp: Show info strip (auto-assigned)
+    else mode = disabled
+        FE-->>Emp: No approver field shown
+    end
+
     Emp->>FE: Fill leave form & submit
-    FE->>API: POST /api/leave/apply {leave_type, dates, reason}
+    FE->>API: POST /api/leave/apply {leave_type, dates, reason, first_approver_id?}
     API->>API: Validate JWT token & get employee
 
     API->>LS: calculate_leave_days()
@@ -22,11 +39,16 @@ sequenceDiagram
     API->>LS: check_leave_balance()
     LS-->>API: sufficient / error
 
+    API->>FAP: resolve_first_approver_from_policy(employee, submitted_id)
+    FAP->>DB: Look up active policy for employee's department
+    DB-->>FAP: Policy or null
+    FAP-->>API: effective_first_approver_id
+
     API->>DB: INSERT leave_requests (status=PENDING)
     API->>LS: update_leave_balance_on_apply() → pending++
     API->>DB: UPDATE leave_balances
 
-    API->>AS: create_approval_chain(leave_req, employee)
+    API->>AS: create_approval_chain(leave_req, employee, first_approver_id)
     AS->>AS: resolve_workflow() → find matching workflow
     AS->>AS: resolve_approver_for_step() → get approver IDs
     AS->>DB: INSERT leave_approvals (step 1, 2, ...)
@@ -34,22 +56,16 @@ sequenceDiagram
     NS->>DB: INSERT notifications
 
     API->>NS: notify_leave_chain(leave_req, employee)
-    NS->>DB: Query L1 manager
-    NS->>DB: INSERT notification → L1 Manager
-    NS->>DB: Query L2 manager
+    NS->>DB: INSERT notification → L1 Approver
     NS->>DB: INSERT notification → L2 Manager
-    NS->>DB: Query all HR admins
-    NS->>DB: INSERT notifications → HR Admins
+    NS->>DB: INSERT notification → HR Admins
 
     API-->>FE: 200 OK — LeaveRequestResponse
     FE-->>Emp: "Leave applied successfully"
 
     Note over Mgr1,HR: Within 10 seconds (polling)
     Mgr1->>FE: Bell badge shows unread count
-    Mgr2->>FE: Bell badge shows unread count
-    HR->>FE: Bell badge shows unread count
-
-    Mgr1->>FE: Click notification → navigate to /approvals
+    Mgr1->>FE: Click notification → /approvals
     FE->>API: GET /api/approvals/pending
     API-->>FE: List of pending approvals
     Mgr1->>FE: Click Approve
@@ -57,7 +73,7 @@ sequenceDiagram
     FE->>API: POST /api/approvals/{id}/action {action: "approve"}
     API->>AS: process_approval_action(approve)
 
-    alt More approval steps
+    alt More approval steps remain
         AS->>DB: UPDATE leave_approvals step1 = APPROVED
         AS->>DB: UPDATE leave_requests current_step++
         AS->>NS: create_notification(step2_approver, "Awaiting Your Approval")
@@ -65,13 +81,13 @@ sequenceDiagram
     else Final step approved
         AS->>DB: UPDATE leave_approvals → APPROVED
         AS->>DB: UPDATE leave_requests status = APPROVED
-        AS->>LS: update_leave_balance_on_approve() → used++
+        AS->>LS: update_leave_balance_on_approve() → used++, pending--
         AS->>NS: create_notification(employee, "Leave Approved")
         NS->>DB: INSERT notification → Employee
         FE-->>Emp: Bell shows "Your leave has been approved"
     end
 
-    alt Rejected
+    alt Rejected at any step
         AS->>DB: UPDATE leave_requests status = REJECTED
         AS->>LS: update_leave_balance_on_reject() → pending--
         AS->>NS: create_notification(employee, "Leave Rejected")
