@@ -4,3 +4,19 @@ node_modules/
 .env.local
 .env*.local
 *.log
+
+# Tests — never include in production build
+e2e/
+playwright.config.ts
+test-results/
+playwright-report/
+.auth/
+**/*.spec.ts
+**/*.test.ts
+**/*.spec.tsx
+**/*.test.tsx
+
+# Dev / IDE
+.vscode/
+.idea/
+*.swp

@@ -7,8 +7,21 @@ __pycache__/
 *.db
 *.db-journal
 uploads/
+
+# Tests — never include in production build
 tests/
+test-results/
 .pytest_cache/
+pytest.ini
+setup.cfg
+conftest.py
+
+# Package build artifacts
 *.egg-info/
 dist/
 build/
+
+# Dev / IDE
+.vscode/
+.idea/
+*.swp
