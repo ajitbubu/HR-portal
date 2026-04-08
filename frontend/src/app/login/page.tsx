@@ -1,7 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+
+function MicrosoftIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1"  y="1"  width="9" height="9" fill="#F25022" />
+      <rect x="11" y="1"  width="9" height="9" fill="#7FBA00" />
+      <rect x="1"  y="11" width="9" height="9" fill="#00A4EF" />
+      <rect x="11" y="11" width="9" height="9" fill="#FFB900" />
+    </svg>
+  );
+}
 
 function DSGLogoWhite() {
   return (
@@ -66,12 +78,34 @@ function DSGShieldIcon() {
   );
 }
 
-export default function LoginPage() {
-  const { login } = useAuth();
+function LoginPageInner() {
+  const { login, loginWithMsToken } = useAuth();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [msError, setMsError] = useState("");
+  const [msLoading, setMsLoading] = useState(false);
+
+  useEffect(() => {
+    const msToken = searchParams.get("ms_token");
+    const msErrorParam = searchParams.get("ms_error");
+    if (msToken) {
+      setMsLoading(true);
+      loginWithMsToken(msToken).catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : "Microsoft sign-in failed");
+        setMsLoading(false);
+      });
+      return;
+    }
+    if (msErrorParam === "not_provisioned") {
+      setMsError("Your account is not provisioned in the HR Portal. Please contact HR.");
+    } else if (msErrorParam) {
+      setMsError("Microsoft sign-in failed. Please try again or use your password.");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -191,10 +225,55 @@ export default function LoginPage() {
               </button>
             </form>
 
+            {/* Divider */}
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200" />
+              </div>
+              <div className="relative flex justify-center">
+                <span className="bg-white px-3 text-xs text-gray-400">or</span>
+              </div>
+            </div>
+
+            {/* Microsoft SSO error */}
+            {msError && (
+              <div className="flex items-center gap-2 bg-red-50 text-red-700 px-4 py-3 rounded-xl text-sm ring-1 ring-red-100 mb-3">
+                <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                </svg>
+                {msError}
+              </div>
+            )}
+
+            {/* Sign in with Microsoft */}
+            <button
+              type="button"
+              disabled={msLoading}
+              onClick={() => {
+                window.location.href = `${process.env.NEXT_PUBLIC_API_URL?.replace("/api", "")}/api/auth/microsoft/login`;
+              }}
+              className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-60"
+            >
+              {msLoading ? (
+                <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+              ) : (
+                <MicrosoftIcon />
+              )}
+              {msLoading ? "Signing in…" : "Sign in with Microsoft"}
+            </button>
+
             <p className="text-center text-[11px] text-gray-400 mt-6">&copy; 2026 DataSafeguard HR Portal</p>
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginPageInner />
+    </Suspense>
   );
 }

@@ -9,6 +9,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginWithMsToken: (token: string) => Promise<void>;
   logout: () => void;
   isRole: (...roles: string[]) => boolean;
 }
@@ -17,6 +18,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   login: async () => {},
+  loginWithMsToken: async () => {},
   logout: () => {},
   isRole: () => false,
 });
@@ -56,6 +58,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push("/dashboard");
   };
 
+  const loginWithMsToken = async (token: string) => {
+    localStorage.setItem("access_token", token);
+    try {
+      const userData = await api.get<User>("/auth/me");
+      document.cookie = `user_role=${userData.role}; path=/; max-age=86400; SameSite=Lax`;
+      setUser(userData);
+      router.push("/dashboard");
+    } catch {
+      localStorage.removeItem("access_token");
+      throw new Error("Failed to load user profile after Microsoft sign-in");
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem("access_token");
     // Clear the role cookie
@@ -67,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isRole = (...roles: string[]) => !!user && roles.includes(user.role);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, isRole }}>
+    <AuthContext.Provider value={{ user, loading, login, loginWithMsToken, logout, isRole }}>
       {children}
     </AuthContext.Provider>
   );

@@ -41,6 +41,11 @@ services:
       MAIL_FROM: hr@datasafeguard.ai
       MAIL_STARTTLS: "true"
       MAIL_SSL_TLS: "false"
+      # Microsoft 365 SSO — fill in to enable the "Sign in with Microsoft" button
+      AZURE_CLIENT_ID: ""
+      AZURE_CLIENT_SECRET: ""
+      AZURE_TENANT_ID: ""
+      AZURE_REDIRECT_URI: "http://localhost:8000/api/auth/microsoft/callback"
     depends_on:
       db:
         condition: service_healthy
