@@ -43,6 +43,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     const res = await api.post<TokenResponse>("/auth/login", { email, password });
     localStorage.setItem("access_token", res.access_token);
+    // Set a non-sensitive role cookie for middleware-based route protection
+    document.cookie = `user_role=${res.role}; path=/; max-age=86400; SameSite=Lax`;
     setUser({
       id: res.user_id,
       email,
@@ -56,6 +58,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     localStorage.removeItem("access_token");
+    // Clear the role cookie
+    document.cookie = "user_role=; path=/; max-age=0";
     setUser(null);
     router.push("/login");
   };

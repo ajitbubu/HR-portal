@@ -9,8 +9,8 @@ export default function ProjectsPage() {
 
   return (
     <DashboardLayout title="Projects">
-      <div className="card">
-        <table className="w-full text-sm">
+      <div className="card overflow-x-auto">
+        <table className="w-full text-sm min-w-[600px]">
           <thead><tr className="text-left text-gray-500 border-b">
             <th className="pb-3">Code</th><th className="pb-3">Name</th><th className="pb-3">Client</th><th className="pb-3">Status</th><th className="pb-3">Budget</th><th className="pb-3">Billable</th>
           </tr></thead>

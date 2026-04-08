@@ -37,8 +37,8 @@
   .card-interactive {
     @apply bg-white rounded-2xl shadow-card border border-gray-100 p-6 transition-all duration-300 hover:shadow-card-hover hover:border-primary-200 hover:-translate-y-1 cursor-pointer;
   }
-  .input-field {
-    @apply w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 transition-all duration-200 placeholder:text-gray-400;
+  .input-field, .input {
+    @apply px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 transition-all duration-200 placeholder:text-gray-400;
   }
   .badge {
     @apply inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold tracking-wide;
@@ -72,6 +72,11 @@
   /* Divider */
   .divider {
     @apply border-t border-gray-100;
+  }
+
+  /* Mobile-friendly table wrapper — horizontal scroll on small screens */
+  .table-responsive {
+    @apply overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0;
   }
 }
 

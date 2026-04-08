@@ -14,9 +14,9 @@ export default function ExpenseReportsPage() {
 
   return (
     <DashboardLayout title="Expense Reports">
-      <div className="card">
+      <div className="card overflow-x-auto">
         <h3 className="font-medium mb-4">Expense Summary by Category</h3>
-        <table className="w-full text-sm">
+        <table className="w-full text-sm min-w-[400px]">
           <thead><tr className="text-left text-gray-500 border-b">
             <th className="pb-3">Category</th><th className="pb-3">Total Amount</th><th className="pb-3">Claims</th>
           </tr></thead>

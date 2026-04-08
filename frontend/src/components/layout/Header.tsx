@@ -124,6 +124,7 @@ export default function Header({ title }: { title: string }) {
         <div className="relative" ref={dropdownRef}>
           <button
             onClick={loadNotifs}
+            aria-label="Notifications"
             className={`relative p-2.5 rounded-xl transition-all duration-200 ${
               showNotifs ? "bg-primary-50 text-primary-600" : "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
             }`}

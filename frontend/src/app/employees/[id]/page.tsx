@@ -198,7 +198,7 @@ export default function EmployeeDetailPage() {
             {/* Personal */}
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Personal</p>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
                   <input title="First Name" value={form.first_name} onChange={(e) => update("first_name", e.target.value)} className="input-field" required />
@@ -234,7 +234,7 @@ export default function EmployeeDetailPage() {
             {/* Hierarchy */}
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Hierarchy & Work</p>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
                   <select title="Department" value={form.department_id} onChange={(e) => update("department_id", e.target.value)} className="input-field">

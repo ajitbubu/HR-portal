@@ -44,6 +44,8 @@ class Holiday(Base):
     name = Column(String(200), nullable=False)
     date = Column(Date, nullable=False)
     is_optional = Column(Boolean, default=False)
+    region = Column(String(50), nullable=True)  # e.g., "North", "South", "East", "West", "All"
+    holiday_type = Column(String(50), default="national")  # national, regional, restricted
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     calendar = relationship("HolidayCalendar", back_populates="holidays")

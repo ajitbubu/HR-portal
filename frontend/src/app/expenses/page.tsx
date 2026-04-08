@@ -24,8 +24,8 @@ export default function ExpensesPage() {
         </div>
       </div>
 
-      <div className="card">
-        <table className="w-full text-sm">
+      <div className="card overflow-x-auto">
+        <table className="w-full text-sm min-w-[500px]">
           <thead><tr className="text-left text-gray-500 border-b">
             <th className="pb-3">Title</th><th className="pb-3">Amount</th><th className="pb-3">Status</th><th className="pb-3">Submitted</th>
           </tr></thead>

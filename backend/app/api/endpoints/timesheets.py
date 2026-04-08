@@ -18,7 +18,11 @@ from app.schemas.timesheet import (
 from app.services.timesheet_service import (
     auto_flag_overtime, get_project_hours_summary,
     get_employee_utilization, submit_weekly_timesheet, approve_timesheet,
+    calculate_daily_hours, calculate_weekly_hours, calculate_weekly_hours_weekdays_only,
 )
+
+MAX_DAILY_HOURS = 8.0
+MAX_WEEKLY_HOURS = 40.0
 from app.services.audit_service import log_audit
 
 router = APIRouter(prefix="/timesheets", tags=["Timesheet & Projects"])
@@ -152,6 +156,22 @@ def create_entry(
     project = db.query(Project).filter(Project.id == data.project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
+
+    # Enforce daily limit (all days)
+    existing_daily = calculate_daily_hours(db, emp.id, data.date)
+    if existing_daily + data.hours > MAX_DAILY_HOURS:
+        remaining = round(MAX_DAILY_HOURS - existing_daily, 2)
+        raise HTTPException(status_code=400, detail=f"Daily limit exceeded. {remaining}h remaining on {data.date}.")
+
+    # Enforce weekly limit only for Mon-Fri (weekends are extra/overtime)
+    weekday = data.date.weekday()
+    if weekday < 5:
+        week_start_d = data.date - timedelta(days=weekday)
+        existing_weekly = calculate_weekly_hours_weekdays_only(db, emp.id, week_start_d)
+        if existing_weekly + data.hours > MAX_WEEKLY_HOURS:
+            remaining = round(MAX_WEEKLY_HOURS - existing_weekly, 2)
+            raise HTTPException(status_code=400, detail=f"Weekly limit exceeded. {remaining}h remaining this week.")
+
     entry = TimesheetEntry(employee_id=emp.id, **data.model_dump())
     db.add(entry)
     db.flush()
@@ -176,6 +196,21 @@ def update_entry(
         raise HTTPException(status_code=403, detail="Not your entry")
     if entry.status != "draft":
         raise HTTPException(status_code=400, detail="Can only edit draft entries")
+
+    # Enforce daily/weekly limits on hour changes
+    if data.hours is not None:
+        daily_excl = calculate_daily_hours(db, emp.id, entry.date) - entry.hours
+        if daily_excl + data.hours > MAX_DAILY_HOURS:
+            remaining = round(MAX_DAILY_HOURS - daily_excl, 2)
+            raise HTTPException(status_code=400, detail=f"Daily limit exceeded. {remaining}h remaining on {entry.date}.")
+        weekday = entry.date.weekday()
+        if weekday < 5:  # Only Mon-Fri weekly cap
+            week_start_d = entry.date - timedelta(days=weekday)
+            weekly_excl = calculate_weekly_hours_weekdays_only(db, emp.id, week_start_d) - entry.hours
+            if weekly_excl + data.hours > MAX_WEEKLY_HOURS:
+                remaining = round(MAX_WEEKLY_HOURS - weekly_excl, 2)
+                raise HTTPException(status_code=400, detail=f"Weekly limit exceeded. {remaining}h remaining this week.")
+
     for key, value in data.model_dump(exclude_unset=True).items():
         setattr(entry, key, value)
     auto_flag_overtime(db, entry)
@@ -262,10 +297,15 @@ def get_pending_approval(
     mgr_emp = db.query(Employee).filter(Employee.user_id == current_user.id).first()
     if not mgr_emp:
         return []
-    # Get subordinates' submitted timesheets
-    subordinate_ids = [e.id for e in db.query(Employee).filter(Employee.manager_id == mgr_emp.id).all()]
+
     if current_user.role in ("super_admin", "hr_admin"):
-        return db.query(WeeklyTimesheet).filter(WeeklyTimesheet.status == "submitted").all()
+        # HR sees timesheets pending their final approval (manager_approved)
+        return db.query(WeeklyTimesheet).filter(
+            WeeklyTimesheet.status == "manager_approved"
+        ).all()
+
+    # Managers see submitted timesheets from their direct reports
+    subordinate_ids = [e.id for e in db.query(Employee).filter(Employee.manager_id == mgr_emp.id).all()]
     return db.query(WeeklyTimesheet).filter(
         WeeklyTimesheet.employee_id.in_(subordinate_ids),
         WeeklyTimesheet.status == "submitted",
@@ -284,9 +324,18 @@ def take_weekly_action(
     weekly = db.query(WeeklyTimesheet).filter(WeeklyTimesheet.id == weekly_id).first()
     if not weekly:
         raise HTTPException(status_code=404, detail="Weekly timesheet not found")
-    if weekly.status != "submitted":
-        raise HTTPException(status_code=400, detail="Can only act on submitted timesheets")
-    result = approve_timesheet(db, weekly_id, current_user.id, data.action, data.comments)
+
+    # Validate who can act at each step
+    if weekly.status == "submitted":
+        if current_user.role not in ("manager", "super_admin", "hr_admin"):
+            raise HTTPException(status_code=403, detail="Only managers can approve submitted timesheets")
+    elif weekly.status == "manager_approved":
+        if current_user.role not in ("super_admin", "hr_admin"):
+            raise HTTPException(status_code=403, detail="Only HR can give final approval")
+    elif weekly.status not in ("submitted", "manager_approved"):
+        raise HTTPException(status_code=400, detail="Timesheet is not awaiting approval")
+
+    result = approve_timesheet(db, weekly_id, current_user.id, data.action, current_user.role, data.comments)
     db.commit()
     db.refresh(result)
     return result

@@ -1,98 +1,45 @@
-%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#1A77F2', 'primaryTextColor': '#fff', 'primaryBorderColor': '#1557B0', 'lineColor': '#64748b', 'secondaryColor': '#f1f5f9', 'tertiaryColor': '#e2e8f0'}}}%%
-
 graph TB
-    subgraph Browser["🌐 Browser — http://localhost:3000"]
-        subgraph NextJS["Next.js 14 Frontend"]
-            Auth["Auth Context\nJWT + localStorage"]
-
-            subgraph Pages["Pages / Routes"]
-                P1["/ Login"]
-                P2["/ Dashboard"]
-                P3["/ Employees"]
-                P4["/ Leave"]
-                P5["/ Approvals"]
-                P6["/ Attendance"]
-                P7["/ Salary"]
-                P8["/ Documents"]
-                P9["/ Org Chart"]
-                P10["/ Reports"]
-                P11["/ Admin"]
-                P12["/ Profile"]
-            end
-
-            subgraph UILayer["UI Components"]
-                Sidebar["Sidebar\n(collapsible)"]
-                Header["Header\n(notifications bell)"]
-                DL["DashboardLayout"]
-            end
-
-            subgraph Lib["Libraries"]
-                ApiClient["api.ts\nHTTP client + Bearer token"]
-                useApi["useApi hook\nfetch + loading + refetch"]
-            end
-        end
+    subgraph Client["Client Browser"]
+        UI["Next.js 14 Frontend\n(React + TypeScript)\nPort 3000"]
     end
 
-    subgraph DockerNetwork["🐳 Docker Network — hr-portal_default"]
-
-        subgraph BackendService["FastAPI Backend — http://localhost:8000"]
-            subgraph Middleware["Middleware"]
-                CORS["CORS Middleware\nallow: localhost:3000"]
-                JWTMw["JWT Auth\nget_current_user()"]
-                RBAC["RBAC\nrequire_roles()"]
-            end
-
-            subgraph Routers["/api/* Routers"]
-                R1["/auth"]
-                R2["/employees"]
-                R3["/leave"]
-                R4["/approvals"]
-                R5["/admin"]
-                R6["/notifications"]
-                R7["/dashboard"]
-                R8["/org-chart"]
-                R9["/salary · /attendance\n/documents · /reports\n/announcements · /onboarding\n/holidays · /hr-tickets\n/audit · /performance"]
-            end
-
-            subgraph Services["Business Logic Services"]
-                S1["employee_service\ngenerate ID · search · bulk import"]
-                S2["leave_service\ncalculate days · check balance\nupdate balance"]
-                S3["approval_service\nresolve workflow · resolve approver\ncreate chain · process action"]
-                S4["notification_service\ncreate · notify chain\nnotify HR admins"]
-                S5["audit_service\nlog audit trail"]
-            end
-
-            subgraph Models["SQLAlchemy ORM Models"]
-                M1["User · Employee"]
-                M2["Department · Team\nDesignation · Location\nBusinessUnit"]
-                M3["LeaveRequest · LeaveType\nLeaveBalance · LeaveApproval\nLeavePolicy"]
-                M4["ApprovalWorkflow\nApprovalWorkflowStep\nAssignedApprover"]
-                M5["Notification · AuditLog\nAnnouncement · Document\nSalaryHistory"]
-                M6["AttendanceRecord\nHolidayCalendar · Holiday\nOnboardingTask · HRTicket\nPerformanceReview"]
-            end
-
-            StaticFiles["/uploads\nProfile Photos\nDocuments"]
-        end
-
-        subgraph DBService["PostgreSQL 16 — port 5432"]
-            DB[("datasafeguard_hr\n\nusers · employees\ndepartments · teams\ndesignations · locations\nleave_requests · leave_types\nleave_balances · leave_approvals\nworkflows · notifications\naudit_logs · salary_history\ndocuments · announcements\nattendance_records · holidays\nonboarding_tasks · hr_tickets")]
-        end
+    subgraph Frontend["Frontend src/"]
+        Pages["Pages / Routes\n/dashboard\n/employees\n/leave\n/approvals\n/attendance\n/salary\n/documents\n/reports\n/org-chart\n/onboarding\n/announcements\n/admin\n/profile"]
+        Components["Components\nSidebar · Header\nDashboardLayout\nDataTable · StatsCard\nAvatar · ProfileAvatar"]
+        Lib["Lib\napi.ts · auth.tsx\nuseApi hook"]
     end
 
-    %% Frontend connections
-    Pages --> DL
-    DL --> Sidebar & Header
-    Pages --> useApi
-    useApi --> ApiClient
-    Auth --> ApiClient
-    Header -->|"polls /notifications/unread-count\nevery 10s"| ApiClient
+    subgraph Backend["FastAPI Backend\nPython 3.12 · Port 8000"]
+        Auth["Auth\nJWT + bcrypt\nRole-based Access\n5 Roles"]
+        Endpoints["API Endpoints /api/\nauth · employees · leave\napprovals · admin · salary\nattendance · documents\nnotifications · dashboard\norg-chart · announcements\naudit · reports · onboarding\nholidays · hr-tickets\nperformance"]
+        Services["Services\nemployee_service\nleave_service\napproval_service\nnotification_service\naudit_service"]
+        Models["Models\nUser · Employee\nOrganization · Leave\nSalary · Attendance\nDocument · Workflow\nNotification · Audit\nAnnouncement · Misc"]
+    end
 
-    %% Frontend to Backend
-    ApiClient -->|"REST API\nHTTP + Bearer JWT"| CORS
+    subgraph Database["PostgreSQL 16\nPort 5432"]
+        Tables["Core Tables\nusers · employees\ndepartments · designations\nlocations · business_units\nleave_requests · leave_types\nleave_balances · leave_approvals\nsalary_history · attendance_records\ndocuments · workflows\nnotifications · audit_logs\nannouncements · onboarding_tasks\nholidays · hr_tickets\nperformance_reviews\ncompany_settings"]
+    end
 
-    %% Backend flow
-    CORS --> JWTMw --> RBAC --> Routers
-    Routers --> Services
+    subgraph Storage["File Storage\n/uploads volume"]
+        Files["Profile Photos\nEmployee Documents\nBulk Import Files"]
+    end
+
+    subgraph Docker["Docker Compose"]
+        DC_FE["hr-portal-frontend"]
+        DC_BE["hr-portal-backend"]
+        DC_DB["hr-portal-db"]
+    end
+
+    UI --> Lib
+    Lib --> Pages
+    Pages --> Components
+    Lib -->|"HTTP + JWT Bearer\nREST API"| Endpoints
+    Endpoints --> Auth
+    Auth --> Services
     Services --> Models
-    Models -->|"SQLAlchemy ORM"| DB
-    R2 --> StaticFiles
+    Models -->|"SQLAlchemy ORM"| Database
+    Endpoints -->|"File upload/download"| Storage
+
+    DC_FE --> UI
+    DC_BE --> Backend
+    DC_DB --> Database

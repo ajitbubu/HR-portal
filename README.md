@@ -10,6 +10,28 @@ Enterprise HR Management System built for DataSafeguard.us.
 - **Auth:** JWT with bcrypt, RBAC middleware
 - **Deployment:** Docker Compose
 
+## Quick Start (Local — no Docker)
+
+Make sure PostgreSQL is running locally, then:
+
+```bash
+# Backend
+cd backend
+cp .env.example .env          # update DATABASE_URL with your connection string
+pip install -r requirements.txt
+python -m uvicorn app.main:app --reload
+```
+
+```bash
+# Frontend (separate terminal)
+cd frontend
+npm install
+npm run dev
+```
+
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8000/api
+
 ## Quick Start (Docker)
 
 ```bash

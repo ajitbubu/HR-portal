@@ -45,6 +45,8 @@ class HolidayCreate(BaseModel):
     name: str
     date: date
     is_optional: bool = False
+    region: str | None = None
+    holiday_type: str = "national"
 
 
 class HolidayResponse(BaseModel):
@@ -54,6 +56,8 @@ class HolidayResponse(BaseModel):
     name: str
     date: date
     is_optional: bool
+    region: str | None = None
+    holiday_type: str | None = None
 
 
 class HolidayCalendarResponse(BaseModel):

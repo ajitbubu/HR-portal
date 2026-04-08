@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useApi } from "@/hooks/useApi";
@@ -30,62 +30,83 @@ function OrgCard({
   const initials = `${firstName[0] ?? ""}${lastName[0] ?? ""}`.toUpperCase();
   const hasChildren = directReports > 0;
 
+  /* Shared avatar + info block used in both manager and IC variants */
+  const avatar = (
+    <div className="relative mb-1">
+      {photoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={photoUrl} alt={node.name} className="w-16 h-16 rounded-full object-cover border-2 border-white shadow" />
+      ) : (
+        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 border-2 border-white shadow flex items-center justify-center text-white font-bold text-base">
+          {initials}
+        </div>
+      )}
+      {hasChildren && (
+        <span className="absolute -bottom-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-blue-600 text-white text-[9px] font-bold flex items-center justify-center shadow border-2 border-white leading-none">
+          {directReports}
+        </span>
+      )}
+    </div>
+  );
+
+  const nameBlock = (
+    <>
+      <p className="text-blue-600 font-semibold text-sm text-center leading-tight">{node.name}</p>
+      {node.designation && (
+        <p className="text-gray-500 text-[11px] text-center leading-tight line-clamp-2">{node.designation}</p>
+      )}
+      {node.location && (
+        <div className="flex items-center justify-center gap-0.5 mt-0.5 mb-1">
+          <svg className="w-3 h-3 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+          </svg>
+          <p className="text-[11px] text-gray-400 truncate">{node.location}</p>
+        </div>
+      )}
+    </>
+  );
+
   return (
     <div className="w-[180px] bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow flex flex-col overflow-hidden">
-      {/* Blue top accent */}
       <div className="h-1 w-full bg-blue-500" />
 
-      {/* Clickable body */}
-      <Link
-        href={`/employees/${node.id}`}
-        className="flex flex-col items-center px-3 pt-4 pb-2 gap-1 hover:bg-blue-50 transition-colors group"
-      >
-        {/* Avatar + badge */}
-        <div className="relative mb-1">
-          {photoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={photoUrl}
-              alt={node.name}
-              className="w-16 h-16 rounded-full object-cover border-2 border-white shadow"
-            />
-          ) : (
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 border-2 border-white shadow flex items-center justify-center text-white font-bold text-base">
-              {initials}
-            </div>
-          )}
-          {hasChildren && (
-            <span className="absolute -bottom-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-blue-600 text-white text-[9px] font-bold flex items-center justify-center shadow border-2 border-white leading-none">
-              {directReports}
-            </span>
-          )}
-        </div>
-
-        {/* Name */}
-        <p className="text-blue-600 group-hover:text-blue-800 font-semibold text-sm text-center leading-tight">
-          {node.name}
-        </p>
-
-        {/* Designation */}
-        {node.designation && (
-          <p className="text-gray-500 text-[11px] text-center leading-tight line-clamp-2">
-            {node.designation}
-          </p>
-        )}
-
-        {/* Location */}
-        {node.location && (
-          <div className="flex items-center justify-center gap-0.5 mt-0.5 mb-1">
-            <svg className="w-3 h-3 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+      {hasChildren ? (
+        /* Manager: clicking the body expands/collapses the team.
+           A small profile link in the top-right corner navigates to the employee page. */
+        <div className="relative">
+          <button
+            type="button"
+            onClick={onToggle}
+            className="w-full flex flex-col items-center px-3 pt-4 pb-2 gap-1 hover:bg-blue-50 transition-colors text-left"
+          >
+            {avatar}
+            {nameBlock}
+          </button>
+          {/* Profile navigation — separate from the toggle */}
+          <Link
+            href={`/employees/${node.id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="absolute top-2 right-2 p-1 rounded-full text-gray-300 hover:text-blue-500 hover:bg-blue-50 transition-colors"
+            title={`View ${node.name}'s profile`}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
             </svg>
-            <p className="text-[11px] text-gray-400 truncate">{node.location}</p>
-          </div>
-        )}
-      </Link>
+          </Link>
+        </div>
+      ) : (
+        /* Individual contributor: clicking the body navigates to their profile */
+        <Link
+          href={`/employees/${node.id}`}
+          className="flex flex-col items-center px-3 pt-4 pb-2 gap-1 hover:bg-blue-50 transition-colors group"
+        >
+          {avatar}
+          {nameBlock}
+        </Link>
+      )}
 
-      {/* Chevron */}
+      {/* Chevron — always visible for managers as a secondary expand/collapse affordance */}
       {hasChildren ? (
         <button
           type="button"
@@ -107,30 +128,110 @@ function OrgCard({
   );
 }
 
+// Pre-compute the initial subtree width: level 0 starts expanded, level 1+ starts collapsed.
+function computeInitialWidth(node: OrgChartNode, level: number): number {
+  if (!node.children?.length || level >= 1) return SLOT_W;
+  if (node.children.length === 1) return computeInitialWidth(node.children[0], level + 1);
+  return node.children.reduce((sum, child) => sum + computeInitialWidth(child, level + 1), 0);
+}
+
 /* ── OrgNode — card + children rendered in independent blocks ────────────── */
-function OrgNode({ node, level = 0 }: { node: OrgChartNode; level?: number }) {
+function OrgNode({
+  node,
+  level = 0,
+  onWidthChange,
+}: {
+  node: OrgChartNode;
+  level?: number;
+  onWidthChange?: (width: number) => void;
+}) {
+  // Start with 1 level expanded — keeps parent cards evenly spaced with no gaps.
+  // Clicking any manager card (or its chevron) expands their team on demand.
   const [expanded, setExpanded] = useState(level < 1);
-  const hasChildren = node.children && node.children.length > 0;
+
+  // Track the actual subtree width of each child (may differ from SLOT_W when children expand)
+  const [childWidths, setChildWidths] = useState<Record<number, number>>(() => {
+    const widths: Record<number, number> = {};
+    for (const child of node.children ?? []) {
+      widths[child.id] = computeInitialWidth(child, level + 1);
+    }
+    return widths;
+  });
+
+  const hasChildren = (node.children?.length ?? 0) > 0;
   const childCount = node.children?.length ?? 0;
 
-  // Total pixel width of the children row
-  const rowWidth = childCount * SLOT_W;
+  // Compute this node's total subtree width from child widths
+  const subtreeWidth = useMemo(() => {
+    if (!hasChildren || !expanded) return SLOT_W;
+    if (childCount === 1) return Math.max(childWidths[node.children[0].id] ?? SLOT_W, SLOT_W);
+    const total = node.children.reduce((sum, c) => sum + (childWidths[c.id] ?? SLOT_W), 0);
+    return Math.max(total, SLOT_W);
+  }, [hasChildren, expanded, childCount, childWidths, node.children]);
 
-  const wrapperWidth = hasChildren && expanded ? Math.max(rowWidth, SLOT_W) : SLOT_W;
+  // Use ref so children can always call the latest onWidthChange without re-triggering effects
+  const onWidthChangeRef = useRef(onWidthChange);
+  useEffect(() => { onWidthChangeRef.current = onWidthChange; });
+
+  // Notify parent when our subtree width changes (e.g. user toggles expand/collapse)
+  useEffect(() => {
+    onWidthChangeRef.current?.(subtreeWidth);
+  }, [subtreeWidth]);
+
+  const handleChildWidthChange = useCallback((childId: number, width: number) => {
+    setChildWidths((prev) => {
+      if (prev[childId] === width) return prev; // no-op if unchanged
+      return { ...prev, [childId]: width };
+    });
+  }, []);
+
+  // Stable per-child callbacks so children don't re-trigger their width effects unnecessarily
+  const childCallbacks = useMemo(() => {
+    const cbs: Record<number, (w: number) => void> = {};
+    for (const child of node.children ?? []) {
+      cbs[child.id] = (w: number) => handleChildWidthChange(child.id, w);
+    }
+    return cbs;
+  }, [node.children, handleChildWidthChange]);
+
+  // Slot widths and bracket geometry based on ACTUAL child subtree widths
+  const slotWidths = (node.children ?? []).map((c) => childWidths[c.id] ?? SLOT_W);
+  const rowWidth = slotWidths.reduce((s, w) => s + w, 0);
+  const bracketLeft = (slotWidths[0] ?? SLOT_W) / 2;
+  const bracketWidth = rowWidth - bracketLeft - (slotWidths[slotWidths.length - 1] ?? SLOT_W) / 2;
+
+  // The card must sit above the visual center of the bracket (midpoint of leftmost→rightmost child),
+  // NOT at rowWidth/2 — those differ when first and last slots have different widths.
+  const cardCenter = (() => {
+    if (!hasChildren || !expanded) return SLOT_W / 2;
+    if (childCount === 1) return Math.max(childWidths[node.children[0].id] ?? SLOT_W, SLOT_W) / 2;
+    return bracketLeft + bracketWidth / 2; // midpoint between first-child-center and last-child-center
+  })();
+  const CARD_W = 180; // matches w-[180px] on OrgCard
+  const cardLeft = Math.max(0, cardCenter - CARD_W / 2);
 
   return (
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    <div className={styles.nodeWrapper} style={{ "--node-width": `${wrapperWidth}px` } as any}>
-      <div className="flex justify-center w-full">
-        <OrgCard node={node} expanded={expanded} onToggle={() => setExpanded(!expanded)} />
+    <div
+      className={styles.nodeWrapper}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      style={{ "--node-width": `${subtreeWidth}px`, "--card-left": `${cardLeft}px`, "--card-center": `${cardCenter}px` } as any}
+    >
+      {/* Offset the card so its centre aligns with the bracket midpoint */}
+      <div className={styles.cardOffset}>
+        <OrgCard node={node} expanded={expanded} onToggle={() => setExpanded((e) => !e)} />
       </div>
 
       {hasChildren && expanded && (
         <>
-          <div className="w-px h-8 bg-gray-300" />
+          {/* Vertical connector — must also be at cardCenter, not nodeWrapper centre */}
+          <div className={`${styles.vConnector} h-8`} />
 
           {childCount === 1 ? (
-            <OrgNode node={node.children[0]} level={level + 1} />
+            <OrgNode
+              node={node.children[0]}
+              level={level + 1}
+              onWidthChange={childCallbacks[node.children[0].id]}
+            />
           ) : (
             <>
               {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
@@ -138,21 +239,25 @@ function OrgNode({ node, level = 0 }: { node: OrgChartNode; level?: number }) {
                 <div
                   className={styles.bracketLine}
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  style={{ "--bracket-left": `${SLOT_W / 2}px`, "--bracket-width": `${(childCount - 1) * SLOT_W}px` } as any}
+                  style={{ "--bracket-left": `${bracketLeft}px`, "--bracket-width": `${bracketWidth}px` } as any}
                 />
               </div>
 
               {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
               <div className={styles.childrenRow} style={{ "--row-width": `${rowWidth}px` } as any}>
-                {node.children.map((child) => (
+                {node.children.map((child, index) => (
                   <div
                     key={child.id}
                     className={styles.childSlot}
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    style={{ "--slot-width": `${SLOT_W}px` } as any}
+                    style={{ "--slot-width": `${slotWidths[index]}px` } as any}
                   >
                     <div className="w-px h-8 bg-gray-300" />
-                    <OrgNode node={child} level={level + 1} />
+                    <OrgNode
+                      node={child}
+                      level={level + 1}
+                      onWidthChange={childCallbacks[child.id]}
+                    />
                   </div>
                 ))}
               </div>

@@ -503,6 +503,49 @@ export interface ExpenseItem {
   project_id?: number;
 }
 
+// --- WFH ---
+export interface WFHRequest {
+  id: number;
+  employee_id: number;
+  employee_name?: string;
+  employee_code?: string;
+  department?: string;
+  department_name?: string;
+  request_date: string;
+  end_date?: string;
+  total_days: number;
+  wfh_type: string;
+  reason?: string;
+  status: string;
+  approved_by?: number;
+  approver_name?: string;
+  approver_comments?: string;
+  comments?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface WFHPolicy {
+  id: number;
+  name: string;
+  max_days_per_week: number;
+  max_days_per_month: number;
+  min_probation_months: number;
+  requires_manager_approval: boolean;
+  eligible_departments?: string;
+  eligible_designations?: string;
+  is_active: boolean;
+}
+
+export interface WFHSummary {
+  total_this_week: number;
+  total_this_month: number;
+  remaining_this_week: number;
+  remaining_this_month: number;
+  max_per_week: number;
+  max_per_month: number;
+}
+
 export interface TokenResponse {
   access_token: string;
   token_type: string;

@@ -7,13 +7,17 @@ from app.models.user import User
 from app.models.organization import Department, BusinessUnit, Location, Designation, Team
 from app.models.leave import LeaveType, LeavePolicy, LeaveBalance
 from app.models.workflow import ApprovalWorkflow, ApprovalWorkflowStep, AssignedApprover
-from app.models.misc import CompanySetting
+from app.models.misc import CompanySetting, FirstApproverPolicy
+from app.models.user import Employee
 from app.schemas.organization import (
     DepartmentCreate, DepartmentResponse, BusinessUnitCreate, BusinessUnitResponse,
     LocationCreate, LocationResponse, DesignationCreate, DesignationResponse,
     TeamCreate, TeamResponse,
 )
-from app.schemas.leave import LeaveTypeCreate, LeaveTypeResponse, LeavePolicyCreate, LeavePolicyResponse, LeaveBalanceAdjust
+from app.schemas.leave import (
+    LeaveTypeCreate, LeaveTypeResponse, LeavePolicyCreate, LeavePolicyResponse,
+    LeaveBalanceAdjust, FirstApproverPolicyCreate, FirstApproverPolicyResponse,
+)
 from app.schemas.workflow import (
     WorkflowCreate, WorkflowResponse, AssignedApproverCreate, AssignedApproverResponse,
 )
@@ -135,6 +139,24 @@ def create_leave_type(req: LeaveTypeCreate, db: Session = Depends(get_db), user:
     return lt
 
 
+@router.put("/leave-types/{leave_type_id}", response_model=LeaveTypeResponse)
+def update_leave_type(
+    leave_type_id: int,
+    req: LeaveTypeCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_roles("super_admin", "hr_admin")),
+):
+    lt = db.query(LeaveType).filter(LeaveType.id == leave_type_id).first()
+    if not lt:
+        raise HTTPException(status_code=404, detail="Leave type not found")
+    for key, val in req.model_dump().items():
+        setattr(lt, key, val)
+    db.commit()
+    db.refresh(lt)
+    log_audit(db, user.id, "update", "leave_type", lt.id, new_values=req.model_dump())
+    return lt
+
+
 # --- Leave Policies ---
 @router.get("/leave-policies", response_model=list[LeavePolicyResponse])
 def list_leave_policies(db: Session = Depends(get_db), _: User = Depends(require_roles("super_admin", "hr_admin"))):
@@ -151,6 +173,29 @@ def create_leave_policy(req: LeavePolicyCreate, db: Session = Depends(get_db), u
 
 
 # --- Leave Balance Adjustment ---
+@router.get("/leave-balance/{employee_id}")
+def get_employee_leave_balances(
+    employee_id: int,
+    year: int = 2026,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles("super_admin", "hr_admin")),
+):
+    from app.schemas.leave import LeaveBalanceResponse, LeaveTypeResponse
+    balances = db.query(LeaveBalance).filter(
+        LeaveBalance.employee_id == employee_id,
+        LeaveBalance.year == year,
+    ).all()
+    return [
+        LeaveBalanceResponse(
+            id=b.id,
+            leave_type=LeaveTypeResponse.model_validate(b.leave_type),
+            year=b.year, entitled=b.entitled, used=b.used,
+            pending=b.pending, carried_forward=b.carried_forward,
+            adjusted=b.adjusted, remaining=b.remaining,
+        ) for b in balances
+    ]
+
+
 @router.post("/leave-balance/adjust")
 def adjust_leave_balance(req: LeaveBalanceAdjust, db: Session = Depends(get_db), user: User = Depends(require_roles("super_admin", "hr_admin"))):
     balance = db.query(LeaveBalance).filter(
@@ -261,3 +306,108 @@ def update_setting(req: CompanySettingUpdate, db: Session = Depends(get_db), use
     db.commit()
     db.refresh(setting)
     return setting
+
+
+# --- First Approver Policies ---
+
+def _policy_to_response(p: FirstApproverPolicy) -> dict:
+    fa_name = None
+    if p.fixed_approver:
+        fa_name = f"{p.fixed_approver.first_name} {p.fixed_approver.last_name}"
+    dept_name = None
+    if p.department_id:
+        from app.models.organization import Department as Dept
+        # relationship not loaded here; just omit — frontend can display id
+        dept_name = None
+    return {
+        "id": p.id,
+        "mode": p.mode,
+        "fixed_approver_id": p.fixed_approver_id,
+        "fixed_approver_name": fa_name,
+        "department_id": p.department_id,
+        "department_name": dept_name,
+        "name": p.name,
+        "is_active": p.is_active,
+    }
+
+
+@router.get("/first-approver-policies")
+def list_first_approver_policies(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles("super_admin", "hr_admin")),
+):
+    policies = db.query(FirstApproverPolicy).order_by(FirstApproverPolicy.id).all()
+    result = []
+    for p in policies:
+        r = _policy_to_response(p)
+        if p.department_id:
+            dept = db.query(Department).filter(Department.id == p.department_id).first()
+            r["department_name"] = dept.name if dept else None
+        result.append(r)
+    return result
+
+
+@router.post("/first-approver-policies")
+def create_first_approver_policy(
+    req: FirstApproverPolicyCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_roles("super_admin", "hr_admin")),
+):
+    VALID_MODES = {"disabled", "employee_choice", "fixed", "manager", "department_head"}
+    if req.mode not in VALID_MODES:
+        raise HTTPException(status_code=400, detail=f"mode must be one of {sorted(VALID_MODES)}")
+    if req.mode == "fixed" and not req.fixed_approver_id:
+        raise HTTPException(status_code=400, detail="fixed_approver_id is required when mode is 'fixed'")
+
+    policy = FirstApproverPolicy(
+        mode=req.mode,
+        fixed_approver_id=req.fixed_approver_id,
+        department_id=req.department_id,
+        name=req.name,
+    )
+    db.add(policy)
+    db.commit()
+    db.refresh(policy)
+    log_audit(db, user.id, "create", "first_approver_policy", policy.id)
+    return _policy_to_response(policy)
+
+
+@router.put("/first-approver-policies/{policy_id}")
+def update_first_approver_policy(
+    policy_id: int,
+    req: FirstApproverPolicyCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_roles("super_admin", "hr_admin")),
+):
+    VALID_MODES = {"disabled", "employee_choice", "fixed", "manager", "department_head"}
+    if req.mode not in VALID_MODES:
+        raise HTTPException(status_code=400, detail=f"mode must be one of {sorted(VALID_MODES)}")
+    if req.mode == "fixed" and not req.fixed_approver_id:
+        raise HTTPException(status_code=400, detail="fixed_approver_id is required when mode is 'fixed'")
+
+    policy = db.query(FirstApproverPolicy).filter(FirstApproverPolicy.id == policy_id).first()
+    if not policy:
+        raise HTTPException(status_code=404, detail="Policy not found")
+    policy.mode = req.mode
+    policy.fixed_approver_id = req.fixed_approver_id
+    policy.department_id = req.department_id
+    policy.name = req.name
+    db.commit()
+    db.refresh(policy)
+    log_audit(db, user.id, "update", "first_approver_policy", policy.id)
+    return _policy_to_response(policy)
+
+
+@router.delete("/first-approver-policies/{policy_id}")
+def delete_first_approver_policy(
+    policy_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_roles("super_admin", "hr_admin")),
+):
+    policy = db.query(FirstApproverPolicy).filter(FirstApproverPolicy.id == policy_id).first()
+    if not policy:
+        raise HTTPException(status_code=404, detail="Policy not found")
+    db.delete(policy)
+    db.commit()
+    log_audit(db, user.id, "delete", "first_approver_policy", policy_id)
+    return {"message": "Policy deleted"}

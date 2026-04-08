@@ -9,8 +9,8 @@ export default function InterviewsPage() {
 
   return (
     <DashboardLayout title="Interviews">
-      <div className="card">
-        <table className="w-full text-sm">
+      <div className="card overflow-x-auto">
+        <table className="w-full text-sm min-w-[600px]">
           <thead><tr className="text-left text-gray-500 border-b">
             <th className="pb-3">Candidate</th><th className="pb-3">Type</th><th className="pb-3">Scheduled</th><th className="pb-3">Duration</th><th className="pb-3">Status</th><th className="pb-3">Rating</th>
           </tr></thead>

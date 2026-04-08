@@ -168,7 +168,7 @@ export default function LoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="input-field"
+                  className="input-field w-full"
                   placeholder="you@datasafeguard.ai"
                   required
                 />
@@ -180,7 +180,7 @@ export default function LoginPage() {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="input-field"
+                  className="input-field w-full"
                   placeholder="Enter your password"
                   required
                 />

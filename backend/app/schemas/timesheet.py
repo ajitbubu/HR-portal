@@ -118,6 +118,8 @@ class WeeklyTimesheetResponse(BaseModel):
     overtime_hours: float
     status: str
     submitted_at: datetime | None = None
+    manager_approved_by_id: int | None = None
+    manager_approved_at: datetime | None = None
     approved_by_id: int | None = None
     approved_at: datetime | None = None
     comments: str | None = None

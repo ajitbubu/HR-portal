@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useApi } from "@/hooks/useApi";
@@ -8,6 +8,22 @@ import { api } from "@/lib/api";
 import type { LeaveRequest, EmployeeList } from "@/types";
 
 export default function ApprovalsPage() {
+  const [emailAction, setEmailAction] = useState<string | null>(null);
+  const [emailRequestId, setEmailRequestId] = useState<string | null>(null);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const action = params.get("action");
+    const requestId = params.get("request_id");
+    if (action && requestId) {
+      setEmailAction(action);
+      setEmailRequestId(requestId);
+    }
+  }, []);
+
+  const showEmailBanner = !bannerDismissed && !!emailAction && !!emailRequestId;
+
   const { data: pending, refetch: refetchPending } = useApi<LeaveRequest[]>("/approvals/pending");
   const { data: history } = useApi<LeaveRequest[]>("/approvals/history");
   const { data: allEmployees } = useApi<EmployeeList>("/employees?per_page=100");
@@ -39,6 +55,41 @@ export default function ApprovalsPage() {
 
   return (
     <DashboardLayout title="Approvals">
+      {/* Email action confirmation banner */}
+      {showEmailBanner && (
+        <div className={`mb-5 rounded-xl px-4 py-3 flex items-center justify-between gap-3 ${
+          emailAction === "approve"
+            ? "bg-green-50 border border-green-200 text-green-800"
+            : "bg-red-50 border border-red-200 text-red-800"
+        }`}>
+          <div className="flex items-center gap-2">
+            {emailAction === "approve" ? (
+              <svg className="w-5 h-5 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            )}
+            <span className="text-sm font-medium">
+              Leave request #{emailRequestId} has been{" "}
+              <strong>{emailAction === "approve" ? "approved" : "rejected"}</strong> via email.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setBannerDismissed(true)}
+            className="text-current opacity-60 hover:opacity-100 flex-shrink-0"
+            aria-label="Dismiss"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
+
       {/* Tabs */}
       <div className="flex gap-2 mb-6">
         {(["pending", "history"] as const).map((tab) => (

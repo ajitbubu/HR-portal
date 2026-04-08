@@ -6,7 +6,7 @@ from app.models.leave import LeaveRequest, LeaveApproval, LeaveStatus, ApprovalS
 from app.models.workflow import ApprovalWorkflow, ApprovalWorkflowStep, AssignedApprover
 from app.models.user import Employee
 from app.models.organization import Department
-from app.models.misc import DelegationSetting
+from app.models.misc import DelegationSetting, FirstApproverPolicy
 from app.services.leave_service import update_leave_balance_on_approve, update_leave_balance_on_reject
 from app.services.notification_service import create_notification
 
@@ -90,7 +90,9 @@ def resolve_approver_for_step(
             dept = db.query(Department).filter(Department.id == employee.department_id).first()
             if dept and dept.head_id:
                 return dept.head_id
-        return employee.manager_id
+        # No department head configured — skip this step rather than falling back to the
+        # manager (which would duplicate the step-1 manager approval).
+        return None
 
     if step.approver_role == "hr_admin":
         # Find an HR admin employee
@@ -103,43 +105,133 @@ def resolve_approver_for_step(
     return None
 
 
+def resolve_first_approver_from_policy(
+    db: Session,
+    employee: Employee,
+    submitted_id: int | None,
+) -> int | None:
+    """Return the first-approver employee ID that should be used, respecting the configured policy.
+
+    If no policy is configured the submitted_id is returned as-is (original behaviour).
+    """
+    policy = None
+    if employee.department_id:
+        policy = db.query(FirstApproverPolicy).filter(
+            FirstApproverPolicy.department_id == employee.department_id,
+            FirstApproverPolicy.is_active == True,
+        ).first()
+    if not policy:
+        policy = db.query(FirstApproverPolicy).filter(
+            FirstApproverPolicy.department_id == None,
+            FirstApproverPolicy.is_active == True,
+        ).first()
+
+    if not policy:
+        return submitted_id
+
+    mode = policy.mode
+    if mode == "disabled":
+        return None
+    if mode == "employee_choice":
+        return submitted_id
+    if mode == "fixed":
+        return policy.fixed_approver_id
+    if mode == "manager":
+        return employee.manager_id
+    if mode == "department_head":
+        if employee.department_id:
+            dept = db.query(Department).filter(Department.id == employee.department_id).first()
+            if dept and dept.head_id:
+                return dept.head_id
+        return None
+    return submitted_id
+
+
 def create_approval_chain(
     db: Session,
     leave_request: LeaveRequest,
     employee: Employee,
+    first_approver_id: int | None = None,
 ):
     """Create the full approval chain for a leave request."""
+    # ── CEO Auto-Approve: CEO does not need approval ──
+    from app.models.organization import Designation
+    if employee.designation_id:
+        desig = db.query(Designation).filter(Designation.id == employee.designation_id).first()
+        if desig and desig.level == 1:  # CEO / Managing Director
+            leave_request.status = LeaveStatus.APPROVED.value
+            from app.services.leave_service import update_leave_balance_on_approve
+            update_leave_balance_on_approve(
+                db, leave_request.employee_id,
+                leave_request.leave_type_id,
+                leave_request.total_days,
+                leave_request.start_date.year,
+            )
+            db.commit()
+            return
+
     workflow = resolve_workflow(db, employee, leave_request.leave_type_id)
 
     if not workflow or not workflow.steps:
         # Default: single-step manager approval
         approver_id = employee.manager_id
-        if not approver_id:
-            # Auto-approve if no manager
+        if not approver_id and not first_approver_id:
+            # Auto-approve if no manager and no first approver
             leave_request.status = LeaveStatus.APPROVED.value
             db.commit()
             return
 
+        step = 1
+        # Optional first-level approver (e.g., Product Manager)
+        if first_approver_id:
+            first_aid = resolve_active_delegate(db, first_approver_id)
+            approval = LeaveApproval(
+                leave_request_id=leave_request.id,
+                approver_id=first_aid,
+                step_order=step,
+                status=ApprovalStatus.PENDING.value,
+            )
+            db.add(approval)
+            step += 1
+
+        if approver_id:
+            approval = LeaveApproval(
+                leave_request_id=leave_request.id,
+                approver_id=approver_id,
+                step_order=step,
+                status=ApprovalStatus.PENDING.value,
+            )
+            db.add(approval)
+
+        db.commit()
+
+        # Notify first step approver
+        first_step = db.query(LeaveApproval).filter(
+            LeaveApproval.leave_request_id == leave_request.id,
+            LeaveApproval.step_order == 1,
+        ).first()
+        if first_step:
+            approver = db.query(Employee).filter(Employee.id == first_step.approver_id).first()
+            if approver and approver.user_id:
+                create_notification(
+                    db, approver.user_id,
+                    "New Leave Request",
+                    f"{employee.first_name} {employee.last_name} has requested leave.",
+                    type="approval",
+                    link=f"/approvals",
+                )
+        return
+
+    # Optional first-level approver (e.g., Product Manager) — inserted before workflow steps
+    if first_approver_id:
+        first_aid = resolve_active_delegate(db, first_approver_id)
         approval = LeaveApproval(
             leave_request_id=leave_request.id,
-            approver_id=approver_id,
-            step_order=1,
+            approver_id=first_aid,
+            step_order=0,  # Before workflow step 1
             status=ApprovalStatus.PENDING.value,
         )
         db.add(approval)
-        db.commit()
-
-        # Notify approver
-        approver = db.query(Employee).filter(Employee.id == approver_id).first()
-        if approver and approver.user_id:
-            create_notification(
-                db, approver.user_id,
-                "New Leave Request",
-                f"{employee.first_name} {employee.last_name} has requested leave.",
-                type="approval",
-                link=f"/approvals",
-            )
-        return
 
     # Create approval entries for each step (auto-route to delegate if approver is OOO)
     for step in workflow.steps:

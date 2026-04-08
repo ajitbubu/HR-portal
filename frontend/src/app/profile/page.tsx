@@ -211,45 +211,63 @@ export default function ProfilePage() {
 
               {/* Create form */}
               {showDelegForm && (
-                <form onSubmit={handleCreateDelegation} className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-4 space-y-3">
-                  <p className="text-sm font-medium text-blue-900">New Delegation</p>
-                  {delegError && <p className="text-xs text-red-600">{delegError}</p>}
+                <form onSubmit={handleCreateDelegation} noValidate className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-4 space-y-4">
+                  <p className="text-sm font-semibold text-gray-800">New Delegation</p>
+                  {delegError && (
+                    <div className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 px-3 py-2.5 rounded-xl text-xs">
+                      <svg className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                      </svg>
+                      {delegError}
+                    </div>
+                  )}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Delegate To *</label>
+                      <label htmlFor="deleg-to" className="block text-xs font-medium text-gray-600 mb-1.5">
+                        Delegate To <span className="text-red-500">*</span>
+                      </label>
                       <select
-                        title="Delegate To"
+                        id="deleg-to"
                         value={delegForm.delegate_id}
                         onChange={(e) => setDelegForm({ ...delegForm, delegate_id: e.target.value })}
-                        className="input-field text-sm"
+                        className="input-field w-full text-sm"
                         required
                       >
-                        <option value="">Select employee...</option>
+                        <option value="">Select employee…</option>
                         {allEmployees?.items?.filter((e) => e.id !== emp?.id).map((e) => (
                           <option key={e.id} value={e.id}>{e.first_name} {e.last_name} — {e.employee_id}</option>
                         ))}
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Reason</label>
+                      <label htmlFor="deleg-reason" className="block text-xs font-medium text-gray-600 mb-1.5">Reason</label>
                       <input
+                        id="deleg-reason"
                         value={delegForm.reason}
                         onChange={(e) => setDelegForm({ ...delegForm, reason: e.target.value })}
-                        className="input-field text-sm"
-                        placeholder="e.g. Annual leave, Conference..."
+                        className="input-field w-full text-sm"
+                        placeholder="e.g. Annual leave, Conference…"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Start Date *</label>
-                      <input title="Start Date" type="date" value={delegForm.start_date} onChange={(e) => setDelegForm({ ...delegForm, start_date: e.target.value })} className="input-field text-sm" required />
+                      <label htmlFor="deleg-start" className="block text-xs font-medium text-gray-600 mb-1.5">
+                        Start Date <span className="text-red-500">*</span>
+                      </label>
+                      <input id="deleg-start" type="date" value={delegForm.start_date} onChange={(e) => setDelegForm({ ...delegForm, start_date: e.target.value })} className="input-field w-full text-sm" required />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">End Date *</label>
-                      <input title="End Date" type="date" value={delegForm.end_date} onChange={(e) => setDelegForm({ ...delegForm, end_date: e.target.value })} className="input-field text-sm" required />
+                      <label htmlFor="deleg-end" className="block text-xs font-medium text-gray-600 mb-1.5">
+                        End Date <span className="text-red-500">*</span>
+                      </label>
+                      <input id="deleg-end" type="date" value={delegForm.end_date} onChange={(e) => setDelegForm({ ...delegForm, end_date: e.target.value })} className="input-field w-full text-sm" required />
                     </div>
                   </div>
-                  <div className="flex gap-2 pt-1">
-                    <button type="submit" disabled={delegSaving} className="btn-primary text-sm">{delegSaving ? "Saving..." : "Create Delegation"}</button>
+                  <div className="flex gap-2">
+                    <button type="submit" disabled={delegSaving} className="btn-primary text-sm flex items-center gap-2">
+                      {delegSaving ? (
+                        <><span className="animate-spin inline-block w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full" />Saving…</>
+                      ) : "Create Delegation"}
+                    </button>
                     <button type="button" onClick={() => setShowDelegForm(false)} className="btn-secondary text-sm">Cancel</button>
                   </div>
                 </form>
@@ -310,11 +328,21 @@ export default function ProfilePage() {
                           <span className="text-lg font-bold text-gray-900">{b.remaining}</span>
                           <span className="text-xs text-gray-400">/ {total}</span>
                         </div>
-                        <div className="w-full h-1.5 bg-gray-200 rounded-full mt-2 overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all duration-500 ${usedPct > 80 ? "bg-red-400" : usedPct > 50 ? "bg-amber-400" : "bg-emerald-400"}`}
-                            style={{ width: `${usedPct}%` }}
-                          />
+                        <div className="flex gap-0.5 mt-2">
+                          {Array.from({ length: Math.min(total, 20) }).map((_, i) => {
+                            const segTotal = Math.min(total, 20);
+                            const segUsed = Math.round((b.used / total) * segTotal);
+                            return (
+                              <div
+                                key={i}
+                                className={`flex-1 h-1.5 rounded-full transition-colors ${
+                                  i < segUsed
+                                    ? usedPct > 80 ? "bg-red-400" : usedPct > 50 ? "bg-amber-400" : "bg-emerald-400"
+                                    : "bg-gray-200"
+                                }`}
+                              />
+                            );
+                          })}
                         </div>
                         <p className="text-[10px] text-gray-400 mt-1">{b.used} used &middot; {b.pending} pending</p>
                       </div>

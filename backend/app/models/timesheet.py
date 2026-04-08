@@ -100,5 +100,9 @@ class WeeklyTimesheet(Base):
     comments = Column(Text)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
+    manager_approved_by_id = Column(Integer, ForeignKey("employees.id"), nullable=True)
+    manager_approved_at = Column(DateTime(timezone=True), nullable=True)
+
     employee = relationship("Employee", foreign_keys=[employee_id])
     approved_by = relationship("Employee", foreign_keys=[approved_by_id])
+    manager_approved_by = relationship("Employee", foreign_keys=[manager_approved_by_id])

@@ -16,6 +16,20 @@ class Settings(BaseSettings):
 
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:3001", "http://localhost:8000"]
 
+    # Email settings
+    MAIL_USERNAME: str = ""
+    MAIL_PASSWORD: str = ""
+    MAIL_FROM: str = "hr@datasafeguard.ai"
+    MAIL_FROM_NAME: str = "DataSafeguard HR"
+    MAIL_SERVER: str = "smtp.gmail.com"
+    MAIL_PORT: int = 587
+    MAIL_STARTTLS: bool = True
+    MAIL_SSL_TLS: bool = False
+    MAIL_ENABLED: bool = False  # Disabled by default, enable in .env
+
+    # App URL for deep links
+    APP_BASE_URL: str = "http://localhost:3000"
+
     UPLOAD_DIR: str = "uploads"
     MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024  # 10MB
     WORK_START_HOUR: int = 9

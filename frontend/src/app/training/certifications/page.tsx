@@ -9,8 +9,8 @@ export default function CertificationsPage() {
 
   return (
     <DashboardLayout title="Certifications">
-      <div className="card">
-        <table className="w-full text-sm">
+      <div className="card overflow-x-auto">
+        <table className="w-full text-sm min-w-[400px]">
           <thead><tr className="text-left text-gray-500 border-b">
             <th className="pb-3">Name</th><th className="pb-3">Issuing Body</th><th className="pb-3">Validity</th>
           </tr></thead>

@@ -65,6 +65,9 @@ class LeaveApplyRequest(BaseModel):
     is_half_day: bool = False
     half_day_type: str | None = None
     reason: str | None = None
+    attachment_path: str | None = None
+    is_emergency: bool = False
+    first_approver_id: int | None = None  # Optional: employee can pick a Product Manager as first approver
 
 
 class LeaveRequestResponse(BaseModel):
@@ -133,3 +136,69 @@ class ApprovalActionRequest(BaseModel):
     action: str  # approve, reject, send_back, delegate
     comments: str | None = None
     delegate_to_id: int | None = None
+
+
+# ── Comp-Off ──
+class CompOffRequest(BaseModel):
+    work_date: date
+    reason: str
+    hours_worked: float = 8
+    days_granted: float = 1  # 0.5 or 1
+
+
+class CompOffActionRequest(BaseModel):
+    action: str  # approve, reject
+    comments: str | None = None
+
+
+class CompOffGrantResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    employee_id: int
+    employee_name: str | None = None
+    work_date: date
+    reason: str | None = None
+    hours_worked: float
+    days_granted: float
+    status: str
+    manager_comments: str | None = None
+    hr_comments: str | None = None
+    expires_at: date | None = None
+    created_at: datetime | None = None
+
+
+# ── First Approver Policy ──
+class FirstApproverPolicyCreate(BaseModel):
+    mode: str  # disabled | employee_choice | fixed | manager | department_head
+    fixed_approver_id: int | None = None
+    department_id: int | None = None
+    name: str | None = None
+
+
+class FirstApproverPolicyResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    mode: str
+    fixed_approver_id: int | None = None
+    fixed_approver_name: str | None = None
+    department_id: int | None = None
+    department_name: str | None = None
+    name: str | None = None
+    is_active: bool
+
+
+class EligibleApproverItem(BaseModel):
+    id: int
+    name: str
+    designation: str | None = None
+    department: str | None = None
+
+
+class FirstApproverConfigResponse(BaseModel):
+    """Returned to the Apply Leave form so it knows how to render the first-approver widget."""
+    mode: str  # disabled | employee_choice | fixed | manager | department_head
+    fixed_approver_id: int | None = None
+    fixed_approver_name: str | None = None
+    eligible_approvers: list[EligibleApproverItem] = []

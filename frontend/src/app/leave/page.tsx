@@ -84,7 +84,8 @@ export default function LeavePage() {
                         <span key={a.id} className="block">{a.approver_name}: {a.status}</span>
                       ))}
                     </td>
-                    <td className="py-3">
+                    <td className="py-3 flex gap-3 items-center">
+                      <Link href={`/leave/${lr.id}`} className="text-xs text-primary-600 hover:underline">View</Link>
                       {(lr.status === "pending" || lr.status === "sent_back") && (
                         <button onClick={() => cancelRequest(lr.id)} className="text-xs text-red-600 hover:underline">Cancel</button>
                       )}

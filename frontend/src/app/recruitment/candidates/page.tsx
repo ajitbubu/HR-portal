@@ -14,8 +14,8 @@ export default function CandidatesPage() {
 
   return (
     <DashboardLayout title="Candidates">
-      <div className="card">
-        <table className="w-full text-sm">
+      <div className="card overflow-x-auto">
+        <table className="w-full text-sm min-w-[600px]">
           <thead><tr className="text-left text-gray-500 border-b">
             <th className="pb-3">Name</th><th className="pb-3">Email</th><th className="pb-3">Source</th><th className="pb-3">Status</th><th className="pb-3">Rating</th>
           </tr></thead>

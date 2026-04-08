@@ -33,7 +33,7 @@ def seed():
 
         # ── Users ──
         users_data = [
-            ("admin@datasafeguard.us", "admin123", "super_admin"),
+            ("avijay@datasafeguard.ai", "admin123", "super_admin"),
             ("hr@datasafeguard.us", "hr123", "hr_admin"),
             ("manager@datasafeguard.us", "manager123", "manager"),
             ("approver@datasafeguard.us", "approver123", "approver"),
@@ -177,13 +177,14 @@ def seed():
         # ── Leave Types ──
         leave_types = []
         lt_data = [
-            ("Annual Leave", "AL", 20, True, True, 5, False),
-            ("Sick Leave", "SL", 12, True, False, 0, True),
-            ("Casual Leave", "CL", 7, True, False, 0, False),
+            ("Earned Leave", "EL", 12, True, True, 5, False),
+            ("Sick Leave", "SL", 3, True, False, 0, True),
+            ("Casual Leave", "CL", 3, True, False, 0, False),
             ("Unpaid Leave", "UL", 0, False, False, 0, False),
-            ("Maternity Leave", "ML", 90, True, False, 0, True),
-            ("Paternity Leave", "PL", 15, True, False, 0, False),
+            ("Maternity Leave", "ML", 182, True, False, 0, True),
+            ("Paternity Leave", "PL", 10, True, False, 0, False),
             ("Comp Off", "CO", 0, True, False, 0, False),
+            ("Bereavement Leave", "BL", 3, True, False, 0, False),
         ]
         for name, code, days, paid, cf, max_cf, req_doc in lt_data:
             lt = LeaveType(name=name, code=code, default_days=days, is_paid=paid,
@@ -192,11 +193,21 @@ def seed():
             leave_types.append(lt)
         db.flush()
 
+        # Set policy-specific fields
+        for lt in leave_types:
+            if lt.code == "EL":
+                lt.min_days_notice = 7
+            elif lt.code == "SL":
+                lt.max_consecutive_days = 2  # medical cert required beyond this
+        db.flush()
+
         # ── Leave Policies ──
         for lt in leave_types[:3]:
             pol = LeavePolicy(
                 name=f"{lt.name} Policy", leave_type_id=lt.id,
-                accrual_type="annual", exclude_weekends=True, exclude_holidays=True,
+                accrual_type="monthly" if lt.code == "EL" else "annual",
+                accrual_amount=1.0 if lt.code == "EL" else 0,
+                exclude_weekends=True, exclude_holidays=True,
                 allow_half_day=True, allow_negative_balance=False,
             )
             db.add(pol)
@@ -301,34 +312,42 @@ def seed():
         db.flush()
         us_holidays = [
             ("New Year's Day", date(2026, 1, 1)),
-            ("Martin Luther King Jr. Day", date(2026, 1, 19)),
             ("Presidents' Day", date(2026, 2, 16)),
             ("Memorial Day", date(2026, 5, 25)),
+            ("Juneteenth", date(2026, 6, 19)),
             ("Independence Day", date(2026, 7, 3)),
             ("Labor Day", date(2026, 9, 7)),
-            ("Thanksgiving", date(2026, 11, 26)),
-            ("Day after Thanksgiving", date(2026, 11, 27)),
-            ("Christmas Eve", date(2026, 12, 24)),
+            ("Indigenous Peoples' Day", date(2026, 10, 12)),
+            ("Veterans Day", date(2026, 11, 11)),
+            ("Thanksgiving Day", date(2026, 11, 26)),
             ("Christmas Day", date(2026, 12, 25)),
-            ("New Year's Eve", date(2026, 12, 31)),
         ]
         for hname, hdate in us_holidays:
-            db.add(Holiday(calendar_id=cal.id, name=hname, date=hdate, is_optional=False))
+            db.add(Holiday(calendar_id=cal.id, name=hname, date=hdate, is_optional=False, region="All", holiday_type="national"))
 
-        # India calendar
+        # India calendar — with regional tags
         cal_in = HolidayCalendar(name="India Holidays 2026", year=2026, location_id=locations[3].id)
         db.add(cal_in)
         db.flush()
-        for hname, hdate, opt in [
-            ("Republic Day", date(2026, 1, 26), False),
-            ("Holi", date(2026, 3, 17), False),
-            ("Good Friday", date(2026, 4, 3), True),
-            ("Independence Day", date(2026, 8, 15), False),
-            ("Gandhi Jayanti", date(2026, 10, 2), False),
-            ("Diwali", date(2026, 11, 8), False),
-            ("Christmas", date(2026, 12, 25), False),
+        # (name, date, is_optional, region, holiday_type)
+        for hname, hdate, opt, region, htype in [
+            ("New Year's Day", date(2026, 1, 1), False, "All", "national"),
+            ("Makar Sankranti / Pongal", date(2026, 1, 14), False, "South", "regional"),
+            ("Republic Day", date(2026, 1, 26), False, "All", "national"),
+            ("Maha Shivaratri", date(2026, 2, 16), False, "All", "national"),
+            ("Holi", date(2026, 3, 4), False, "North", "regional"),
+            ("Ugadi / Gudi Padwa", date(2026, 3, 22), True, "South", "regional"),
+            ("Labor Day", date(2026, 5, 1), False, "All", "national"),
+            ("Onam", date(2026, 8, 22), True, "South", "regional"),
+            ("Ganesh Chaturthi", date(2026, 9, 15), False, "West", "regional"),
+            ("Durga Puja", date(2026, 10, 17), True, "East", "regional"),
+            ("Gandhi Jayanti", date(2026, 10, 2), False, "All", "national"),
+            ("Dussehra (Vijaya Dashami)", date(2026, 10, 20), False, "All", "national"),
+            ("Diwali (Deepavali)", date(2026, 11, 9), False, "All", "national"),
+            ("Chhath Puja", date(2026, 11, 11), True, "East", "regional"),
+            ("Christmas Day", date(2026, 12, 25), False, "All", "national"),
         ]:
-            db.add(Holiday(calendar_id=cal_in.id, name=hname, date=hdate, is_optional=opt))
+            db.add(Holiday(calendar_id=cal_in.id, name=hname, date=hdate, is_optional=opt, region=region, holiday_type=htype))
 
         # ── Announcements ──
         announcements = [
@@ -371,7 +390,8 @@ def seed():
         print(f"  Created 2 holiday calendars")
         print(f"  Created {len(announcements)} announcements")
         print("\nDemo credentials:")
-        print("  admin@datasafeguard.us / admin123 (Super Admin)")
+        print("  avijay@datasafeguard.ai / admin123 (Super Admin)")
+        print("  sudhir@datasafeguard.ai / Admin@123 (CEO)")
         print("  hr@datasafeguard.us / hr123 (HR Admin)")
         print("  manager@datasafeguard.us / manager123 (Manager)")
         print("  approver@datasafeguard.us / approver123 (Approver)")

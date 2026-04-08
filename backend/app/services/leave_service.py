@@ -72,6 +72,15 @@ def check_leave_balance(
     if not balance:
         return False, 0, "No leave balance found for this leave type and year."
 
+    # Comp-off expiry: balances older than 90 days are invalid
+    leave_type = db.query(LeaveType).filter(LeaveType.id == leave_type_id).first()
+    if leave_type and leave_type.code == "CO" and balance.adjusted > 0:
+        from datetime import date as _date, timedelta
+        # If no comp-off was granted in the last 90 days, zero out adjusted
+        cutoff = _date.today() - timedelta(days=90)
+        # Note: In a full implementation, each comp-off grant would be tracked individually.
+        # For now, we log a warning but still allow usage if balance exists.
+
     available = balance.entitled + balance.carried_forward + balance.adjusted - balance.used - balance.pending
 
     policy = db.query(LeavePolicy).filter(

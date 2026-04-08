@@ -157,6 +157,29 @@ def create_employee(
                 link=f"/employees/{emp.id}",
             )
 
+    # Auto-initialise leave balances (pro-rated by join date)
+    from datetime import date as _date
+    from app.models.leave import LeaveType as _LeaveType, LeaveBalance as _LeaveBalance
+    current_year = _date.today().year
+    joining = emp.joining_date if isinstance(emp.joining_date, _date) else _date.fromisoformat(str(emp.joining_date))
+    # months remaining in the year (inclusive of joining month)
+    months_remaining = 12 - joining.month + 1 if joining.year == current_year else 12
+    active_types = db.query(_LeaveType).filter(_LeaveType.is_active == True, _LeaveType.default_days > 0).all()
+    for lt in active_types:
+        existing = db.query(_LeaveBalance).filter(
+            _LeaveBalance.employee_id == emp.id,
+            _LeaveBalance.leave_type_id == lt.id,
+            _LeaveBalance.year == current_year,
+        ).first()
+        if not existing:
+            prorated = round(lt.default_days * months_remaining / 12, 1)
+            db.add(_LeaveBalance(
+                employee_id=emp.id, leave_type_id=lt.id,
+                year=current_year, entitled=prorated,
+                used=0, pending=0, carried_forward=0, adjusted=0,
+            ))
+    db.commit()
+
     log_audit(db, current_user.id, "create", "employee", emp.id)
     return _to_response(emp)
 

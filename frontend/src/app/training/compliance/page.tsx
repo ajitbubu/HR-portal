@@ -17,8 +17,8 @@ export default function CompliancePage() {
 
   return (
     <DashboardLayout title="Compliance Training">
-      <div className="card">
-        <table className="w-full text-sm">
+      <div className="card overflow-x-auto">
+        <table className="w-full text-sm min-w-[500px]">
           <thead><tr className="text-left text-gray-500 border-b">
             <th className="pb-3">Employee</th><th className="pb-3">Course</th><th className="pb-3">Due Date</th><th className="pb-3">Status</th>
           </tr></thead>

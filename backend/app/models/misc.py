@@ -100,6 +100,36 @@ class DelegationSetting(Base):
     delegate  = relationship("Employee", foreign_keys=[delegate_id])
 
 
+class FirstApproverPolicy(Base):
+    """Configures how the optional first-level approver is determined on leave requests.
+
+    mode:
+        "disabled"        — first approver field is hidden; no extra step inserted
+        "employee_choice" — employee picks from a dropdown (original behaviour)
+        "fixed"           — always route to fixed_approver_id
+        "manager"         — always route to the employee's reporting manager
+        "department_head" — always route to the department head
+    Scoping: if department_id is set, the policy applies only to that department;
+             department_id=None means it is the global/fallback policy.
+    """
+    __tablename__ = "first_approver_policies"
+
+    id = Column(Integer, primary_key=True, index=True)
+    mode = Column(String(30), nullable=False, default="employee_choice")
+    fixed_approver_id = Column(Integer, ForeignKey("employees.id"), nullable=True)
+    department_id = Column(Integer, ForeignKey("departments.id"), nullable=True)
+    name = Column(String(100), nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    fixed_approver = relationship("Employee", foreign_keys=[fixed_approver_id])
+
+
 class HRTicket(Base):
     __tablename__ = "hr_tickets"
 

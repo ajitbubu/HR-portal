@@ -58,6 +58,7 @@ class Employee(Base):
     phone = Column(String(20))
     date_of_birth = Column(DateTime)
     gender = Column(String(20))
+    number_of_children = Column(Integer, default=0)
     address = Column(Text)
     city = Column(String(100))
     state = Column(String(100))

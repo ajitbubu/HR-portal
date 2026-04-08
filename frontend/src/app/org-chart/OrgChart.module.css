@@ -1,8 +1,18 @@
 .nodeWrapper {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   width: var(--node-width);
+}
+
+.cardOffset {
+  margin-left: var(--card-left);
+}
+
+.vConnector {
+  width: 1px;
+  background-color: #d1d5db;
+  margin-left: var(--card-center);
 }
 
 .bracket {

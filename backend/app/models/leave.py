@@ -127,3 +127,29 @@ class LeaveApproval(Base):
 
     leave_request = relationship("LeaveRequest", back_populates="approvals")
     approver = relationship("Employee", foreign_keys=[approver_id])
+
+
+class CompOffGrant(Base):
+    """Tracks individual comp-off grants with work date, approval status, and 90-day expiry."""
+    __tablename__ = "comp_off_grants"
+
+    id = Column(Integer, primary_key=True, index=True)
+    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False)
+    work_date = Column(Date, nullable=False)
+    reason = Column(Text)
+    hours_worked = Column(Float, default=8)
+    days_granted = Column(Float, default=1)  # 0.5 for half-day, 1 for full
+    status = Column(String(20), default="pending")  # pending, manager_approved, hr_approved, rejected, expired, used
+    manager_id = Column(Integer, ForeignKey("employees.id"), nullable=True)
+    manager_action_at = Column(DateTime(timezone=True))
+    manager_comments = Column(Text)
+    hr_approver_id = Column(Integer, ForeignKey("employees.id"), nullable=True)
+    hr_action_at = Column(DateTime(timezone=True))
+    hr_comments = Column(Text)
+    expires_at = Column(Date, nullable=True)  # work_date + 90 days
+    used_in_request_id = Column(Integer, ForeignKey("leave_requests.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    employee = relationship("Employee", foreign_keys=[employee_id])
+    manager = relationship("Employee", foreign_keys=[manager_id])
+    hr_approver = relationship("Employee", foreign_keys=[hr_approver_id])

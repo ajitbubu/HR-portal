@@ -1,0 +1,107 @@
+# Production Docker Compose - DataSafeguard HR Portal
+# Usage: docker compose -f docker-compose.prod.yml up -d
+# Note: For AWS deployment, use ECS task definitions instead.
+#       This file is for self-hosted production or staging environments.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-datasafeguard_hr}
+      POSTGRES_USER: ${POSTGRES_USER:-hruser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hruser} -d ${POSTGRES_DB:-datasafeguard_hr}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - backend-net
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-hruser}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-datasafeguard_hr}
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env}
+      CORS_ORIGINS: ${CORS_ORIGINS:-'["https://hr.datasafeguard.ai"]'}
+      MAIL_ENABLED: ${MAIL_ENABLED:-true}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-hr@datasafeguard.ai}
+      MAIL_SERVER: ${MAIL_SERVER:-email-smtp.us-west-2.amazonaws.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      APP_BASE_URL: ${APP_BASE_URL:-https://hr.datasafeguard.ai}
+      UPLOAD_DIR: /app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - uploads:/app/uploads
+    restart: unless-stopped
+    networks:
+      - backend-net
+      - frontend-net
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://hr.datasafeguard.ai/api}
+    restart: unless-stopped
+    networks:
+      - frontend-net
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 512M
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      - backend
+      - frontend
+    restart: unless-stopped
+    networks:
+      - frontend-net
+      - backend-net
+
+volumes:
+  pgdata:
+    driver: local
+  uploads:
+    driver: local
+
+networks:
+  backend-net:
+    driver: bridge
+  frontend-net:
+    driver: bridge
