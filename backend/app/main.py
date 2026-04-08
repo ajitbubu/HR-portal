@@ -6,7 +6,7 @@ import os
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.api.endpoints import (
-    auth, microsoft_auth, employees, leave, approvals, admin, salary,
+    auth, employees, leave, approvals, admin, salary,
     attendance, documents, notifications, dashboard,
     org_chart, announcements, audit, reports, onboarding,
     timesheets, recruitment, training, expenses,
@@ -109,7 +109,7 @@ app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads"
 
 # Register routers
 for router in [
-    auth.router, microsoft_auth.router, employees.router, leave.router, approvals.router,
+    auth.router, employees.router, leave.router, approvals.router,
     admin.router, salary.router, attendance.router, documents.router,
     notifications.router, dashboard.router, org_chart.router,
     announcements.router, audit.router, reports.router,

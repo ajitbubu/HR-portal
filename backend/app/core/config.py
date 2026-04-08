@@ -30,12 +30,6 @@ class Settings(BaseSettings):
     # App URL for deep links
     APP_BASE_URL: str = "http://localhost:3000"
 
-    # Microsoft 365 SSO (Azure AD)
-    AZURE_CLIENT_ID: str = ""
-    AZURE_CLIENT_SECRET: str = ""
-    AZURE_TENANT_ID: str = ""
-    AZURE_REDIRECT_URI: str = "http://localhost:8000/api/auth/microsoft/callback"
-
     UPLOAD_DIR: str = "uploads"
     MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024  # 10MB
     WORK_START_HOUR: int = 9
