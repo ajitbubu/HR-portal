@@ -126,7 +126,19 @@ def notify_leave_chain(db: Session, leave_request, employee):
         status="pending",
     )
 
-    # Email the direct manager with approve/reject links
+    def _fire(coro):
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                loop.create_task(coro)
+            else:
+                asyncio.run(coro)
+        except Exception:
+            pass
+
+    emp_full_name = f"{employee.first_name} {employee.last_name}"
+
+    # Email L1 manager (direct manager) with Approve / Reject buttons
     if employee.manager_id:
         from app.models.user import Employee as Emp
         mgr = db.query(Emp).filter(Emp.id == employee.manager_id).first()
@@ -138,14 +150,17 @@ def notify_leave_chain(db: Session, leave_request, employee):
                 approve_url=f"{settings.APP_BASE_URL}/api/leave/approve-via-email?token={approve_token}",
                 reject_url=f"{settings.APP_BASE_URL}/api/leave/approve-via-email?token={reject_token}",
             )
-            try:
-                loop = asyncio.get_event_loop()
-                if loop.is_running():
-                    loop.create_task(send_email(mgr.email, f"Leave Request from {employee.first_name} {employee.last_name}", html))
-                else:
-                    asyncio.run(send_email(mgr.email, f"Leave Request from {employee.first_name} {employee.last_name}", html))
-            except RuntimeError:
-                pass  # No event loop available in sync context
+            _fire(send_email(mgr.email, f"[Action Required] Leave Request from {emp_full_name}", html))
+
+        # Email L2 manager (manager's manager) — FYI, no action buttons
+        mgr_obj = db.query(Emp).filter(Emp.id == employee.manager_id).first()
+        if mgr_obj and mgr_obj.manager_id:
+            mgr2 = db.query(Emp).filter(Emp.id == mgr_obj.manager_id).first()
+            if mgr2 and mgr2.email:
+                html_fyi = build_leave_notification_html(
+                    **html_base_kwargs,
+                )
+                _fire(send_email(mgr2.email, f"[FYI] Leave Request from {emp_full_name}", html_fyi))
 
 
 def get_unread_count(db: Session, user_id: int) -> int:

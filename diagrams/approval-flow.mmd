@@ -1,0 +1,81 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#1A77F2', 'primaryTextColor': '#fff', 'primaryBorderColor': '#1557B0', 'lineColor': '#64748b'}}}%%
+
+flowchart TD
+    START([Employee submits leave request]) --> POLICY
+
+    POLICY{First Approver\nPolicy check}
+    POLICY -->|mode = disabled| CHAIN
+    POLICY -->|mode = fixed| FA_FIXED[Use configured\nfixed approver]
+    POLICY -->|mode = manager| FA_MGR[Use employee's\nreporting manager]
+    POLICY -->|mode = dept_head| FA_DH[Use department\nhead]
+    POLICY -->|mode = employee_choice| FA_EMP[Use approver\nselected by employee]
+    FA_FIXED & FA_MGR & FA_DH & FA_EMP --> CHAIN
+
+    CHAIN{Resolve approval\nworkflow}
+    CHAIN -->|dept + leave_type + band match| WF1[Specific workflow]
+    CHAIN -->|dept + leave_type match| WF2[Dept+type workflow]
+    CHAIN -->|dept only match| WF3[Dept workflow]
+    CHAIN -->|no match| WF4[Default workflow\nsingle-step manager]
+    WF1 & WF2 & WF3 & WF4 --> CEO_CHECK
+
+    CEO_CHECK{Employee is\nCEO / Level 1?}
+    CEO_CHECK -->|Yes| AUTO_APPROVE[Auto-approve\nno chain needed]
+    CEO_CHECK -->|No| BUILD_CHAIN
+
+    AUTO_APPROVE --> EMP_APPROVED_EMAIL
+
+    BUILD_CHAIN[Build approval chain\nstep 0 = first approver\nstep 1..N = workflow steps]
+    BUILD_CHAIN --> DELEGATE_CHECK
+
+    DELEGATE_CHECK{Is approver\non delegation?}
+    DELEGATE_CHECK -->|Yes — active delegation today| REROUTE[Reroute to\ndelegate employee]
+    DELEGATE_CHECK -->|No| NOTIFY_L1
+    REROUTE --> NOTIFY_L1
+
+    NOTIFY_L1[In-app notification\n+ Email to Step 1 Approver\nwith Approve ✓ Reject ✗ buttons]
+    NOTIFY_L1 --> FYI_EMAILS[FYI emails sent\nL2 manager — no buttons\nHR Admins — in-app only]
+    FYI_EMAILS --> WAIT
+
+    WAIT([Awaiting action from current step approver])
+
+    WAIT --> ACTION{Approver\naction}
+
+    ACTION -->|Approve| NEXT_CHECK
+    ACTION -->|Reject| REJECT_FLOW
+    ACTION -->|Send Back| SENDBACK_FLOW
+    ACTION -->|Delegate| DELEGATE_FLOW
+
+    NEXT_CHECK{More approval\nsteps remaining?}
+    NEXT_CHECK -->|Yes — advance to next step| NOTIFY_NEXT[In-app notification\n+ Email to Next Approver\nwith Approve ✓ Reject ✗ buttons]
+    NOTIFY_NEXT --> WAIT
+
+    NEXT_CHECK -->|No — final step approved| FINALIZE[Mark request APPROVED\nDeduct leave balance\n used++ pending--]
+    FINALIZE --> EMP_APPROVED_EMAIL[Email + in-app to Employee\nYour leave is APPROVED ✓]
+    EMP_APPROVED_EMAIL --> DONE_APPROVED([Done — Leave Approved])
+
+    REJECT_FLOW[Mark request REJECTED\nRestore balance\n pending--]
+    REJECT_FLOW --> EMP_REJECTED_EMAIL[Email + in-app to Employee\nYour leave is REJECTED ✗\nwith manager comments]
+    EMP_REJECTED_EMAIL --> DONE_REJECTED([Done — Leave Rejected])
+
+    SENDBACK_FLOW[Mark request SENT BACK\nRestore balance\n pending--]
+    SENDBACK_FLOW --> EMP_SENTBACK_EMAIL[Email + in-app to Employee\nLeave sent back for revision\nwith manager comments]
+    EMP_SENTBACK_EMAIL --> RESUBMIT{Employee\nresubmits?}
+    RESUBMIT -->|Yes| START
+    RESUBMIT -->|No| DONE_SENTBACK([Done — Not Resubmitted])
+
+    DELEGATE_FLOW[Reassign approval step\nto selected delegate]
+    DELEGATE_FLOW --> NOTIFY_DELEGATE[In-app notification\n+ Email to Delegate\nwith Approve ✓ Reject ✗ buttons]
+    NOTIFY_DELEGATE --> WAIT
+
+    %% Styling
+    classDef action fill:#3b82f6,color:#fff,stroke:#1d4ed8
+    classDef terminal fill:#10b981,color:#fff,stroke:#059669
+    classDef rejected fill:#ef4444,color:#fff,stroke:#b91c1c
+    classDef email fill:#f59e0b,color:#fff,stroke:#d97706
+    classDef decision fill:#8b5cf6,color:#fff,stroke:#6d28d9
+
+    class NOTIFY_L1,NOTIFY_NEXT,NOTIFY_DELEGATE,FYI_EMAILS email
+    class EMP_APPROVED_EMAIL,EMP_REJECTED_EMAIL,EMP_SENTBACK_EMAIL email
+    class DONE_APPROVED terminal
+    class DONE_REJECTED,DONE_SENTBACK rejected
+    class POLICY,CHAIN,CEO_CHECK,DELEGATE_CHECK,ACTION,NEXT_CHECK,RESUBMIT decision

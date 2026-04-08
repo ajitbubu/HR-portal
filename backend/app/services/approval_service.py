@@ -1,4 +1,6 @@
 from datetime import datetime, timezone, date
+import asyncio
+import logging
 
 from sqlalchemy.orm import Session
 
@@ -9,6 +11,92 @@ from app.models.organization import Department
 from app.models.misc import DelegationSetting, FirstApproverPolicy
 from app.services.leave_service import update_leave_balance_on_approve, update_leave_balance_on_reject
 from app.services.notification_service import create_notification
+
+logger = logging.getLogger(__name__)
+
+
+def _fire_email(coro) -> None:
+    """Fire-and-forget an async email coroutine from synchronous context."""
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            loop.create_task(coro)
+        else:
+            asyncio.run(coro)
+    except Exception as exc:
+        logger.warning("Could not dispatch email: %s", exc)
+
+
+def _email_approver(
+    db: Session,
+    leave_request: LeaveRequest,
+    approver: Employee,
+    step_label: str,
+) -> None:
+    """Send an approval-request email to an approver with inline Approve / Reject buttons."""
+    if not approver.email:
+        return
+    from app.services.email_service import (
+        send_email, build_leave_notification_html, generate_approval_token,
+    )
+    from app.models.leave import LeaveType
+    from app.core.config import settings
+
+    employee = db.query(Employee).filter(Employee.id == leave_request.employee_id).first()
+    lt = db.query(LeaveType).filter(LeaveType.id == leave_request.leave_type_id).first()
+    if not employee or not lt:
+        return
+
+    approve_token = generate_approval_token(leave_request.id, approver.id, "approve")
+    reject_token = generate_approval_token(leave_request.id, approver.id, "reject")
+    html = build_leave_notification_html(
+        employee_name=f"{employee.first_name} {employee.last_name}",
+        leave_type=lt.name,
+        start_date=str(leave_request.start_date),
+        end_date=str(leave_request.end_date),
+        total_days=leave_request.total_days,
+        reason=leave_request.reason or "",
+        status="pending",
+        approve_url=f"{settings.APP_BASE_URL}/api/leave/approve-via-email?token={approve_token}",
+        reject_url=f"{settings.APP_BASE_URL}/api/leave/approve-via-email?token={reject_token}",
+    )
+    subject = f"[{step_label}] Leave Request — {employee.first_name} {employee.last_name}"
+    _fire_email(send_email(approver.email, subject, html))
+
+
+def _email_employee_status(
+    db: Session,
+    leave_request: LeaveRequest,
+    status: str,
+    actioned_by_name: str = "",
+    comments: str = "",
+) -> None:
+    """Send a status-update email to the leave applicant."""
+    from app.services.email_service import send_email, build_leave_notification_html
+    from app.models.leave import LeaveType
+
+    employee = db.query(Employee).filter(Employee.id == leave_request.employee_id).first()
+    lt = db.query(LeaveType).filter(LeaveType.id == leave_request.leave_type_id).first()
+    if not employee or not employee.email or not lt:
+        return
+
+    reason_text = leave_request.reason or ""
+    if comments:
+        reason_text += f"\n\nManager comments: {comments}"
+
+    html = build_leave_notification_html(
+        employee_name=f"{employee.first_name} {employee.last_name}",
+        leave_type=lt.name,
+        start_date=str(leave_request.start_date),
+        end_date=str(leave_request.end_date),
+        total_days=leave_request.total_days,
+        reason=reason_text,
+        status=status,
+        approver_name=actioned_by_name,
+    )
+    status_label = status.replace("_", " ").title()
+    subject = f"Leave Request {status_label} — {lt.name} ({leave_request.start_date} to {leave_request.end_date})"
+    _fire_email(send_email(employee.email, subject, html))
 
 
 def resolve_active_delegate(db: Session, approver_id: int) -> int:
@@ -291,7 +379,7 @@ def process_approval_action(
         if next_approval:
             leave_request.current_approval_step = approval.step_order + 1
             db.commit()
-            # Notify next approver
+            # Notify next approver — in-app + email with approve/reject buttons
             next_approver = db.query(Employee).filter(Employee.id == next_approval.approver_id).first()
             if next_approver and next_approver.user_id:
                 create_notification(
@@ -301,8 +389,13 @@ def process_approval_action(
                     type="approval",
                     link="/approvals",
                 )
+            if next_approver:
+                _email_approver(
+                    db, leave_request, next_approver,
+                    step_label=f"Approval Step {next_approval.step_order}",
+                )
         else:
-            # All steps approved - finalize
+            # All steps approved — finalize
             leave_request.status = LeaveStatus.APPROVED.value
             update_leave_balance_on_approve(
                 db, leave_request.employee_id,
@@ -310,6 +403,8 @@ def process_approval_action(
                 leave_request.total_days,
                 leave_request.start_date.year,
             )
+            actioned_by = db.query(Employee).filter(Employee.id == approval.approver_id).first()
+            actioned_name = f"{actioned_by.first_name} {actioned_by.last_name}" if actioned_by else ""
             if employee and employee.user_id:
                 create_notification(
                     db, employee.user_id,
@@ -318,6 +413,8 @@ def process_approval_action(
                     type="leave",
                     link="/leave",
                 )
+            # Email employee — final approval confirmation
+            _email_employee_status(db, leave_request, "approved", actioned_by_name=actioned_name)
 
     elif action == "reject":
         approval.status = ApprovalStatus.REJECTED.value
@@ -330,6 +427,8 @@ def process_approval_action(
             leave_request.total_days,
             leave_request.start_date.year,
         )
+        actioned_by = db.query(Employee).filter(Employee.id == approval.approver_id).first()
+        actioned_name = f"{actioned_by.first_name} {actioned_by.last_name}" if actioned_by else ""
         if employee and employee.user_id:
             create_notification(
                 db, employee.user_id,
@@ -338,6 +437,11 @@ def process_approval_action(
                 type="leave",
                 link="/leave",
             )
+        # Email employee — rejection with comments
+        _email_employee_status(
+            db, leave_request, "rejected",
+            actioned_by_name=actioned_name, comments=comments or "",
+        )
 
     elif action == "send_back":
         approval.status = ApprovalStatus.SENT_BACK.value
@@ -350,6 +454,8 @@ def process_approval_action(
             leave_request.total_days,
             leave_request.start_date.year,
         )
+        actioned_by = db.query(Employee).filter(Employee.id == approval.approver_id).first()
+        actioned_name = f"{actioned_by.first_name} {actioned_by.last_name}" if actioned_by else ""
         if employee and employee.user_id:
             create_notification(
                 db, employee.user_id,
@@ -358,6 +464,11 @@ def process_approval_action(
                 type="leave",
                 link="/leave",
             )
+        # Email employee — sent back with reason
+        _email_employee_status(
+            db, leave_request, "sent_back",
+            actioned_by_name=actioned_name, comments=comments or "",
+        )
 
     elif action == "delegate" and delegate_to_id:
         approval.approver_id = delegate_to_id
@@ -371,6 +482,12 @@ def process_approval_action(
                 f"A leave request has been delegated to you for approval.",
                 type="approval",
                 link="/approvals",
+            )
+        # Email delegate with approve/reject buttons
+        if delegate:
+            _email_approver(
+                db, leave_request, delegate,
+                step_label=f"Delegated Approval — Step {approval.step_order}",
             )
 
     db.commit()
