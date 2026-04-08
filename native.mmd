@@ -1,0 +1,61 @@
+flowchart BT
+    %% Bottom Layer - Backend & APIs
+    subgraph Backend["DSG Backend & Platform"]
+        A1[Consent Management APIs]
+        A2[Privacy / Policy Engine]
+        A3[User Preference Service]
+        A4["Audit & Compliance Logs"]
+        A5[Auth / Token Service]
+    end
+
+    %% React Native SDK Layer
+    subgraph RNSDK["React Native SDK (Built by DSG)"]
+        B1[API Client Layer]
+        B2[Consent Logic Engine]
+        B3[Privacy Rules Engine]
+        B4[UI Components - Banner / Preferences]
+        B5["Secure Storage & Session Manager"]
+        B6[Event / Audit Tracker]
+    end
+
+    %% Bridge Layer
+    subgraph Bridge["React Native Bridge Layer"]
+        C1[React Native Runtime]
+        C2["Native Bridge Modules (iOS / Android)"]
+    end
+
+    %% Native Apps
+    subgraph Native["Client Native Applications"]
+        D1[iOS App - Swift / SwiftUI]
+        D2[Android App - Kotlin / Java]
+        D3[SDK Integration Layer]
+    end
+
+    %% Distribution Layer
+    subgraph Distribution["App Distribution"]
+        E1[Apple App Store]
+        E2[Google Play Store]
+    end
+
+    %% Flow (Bottom → Top)
+    A1 --> B1
+    A2 --> B3
+    A3 --> B2
+    A4 --> B6
+    A5 --> B5
+
+    B1 --> B2
+    B2 --> B4
+    B3 --> B4
+    B4 --> C1
+    B5 --> C1
+    B6 --> C1
+
+    C1 --> C2
+    C2 --> D3
+
+    D3 --> D1
+    D3 --> D2
+
+    D1 --> E1
+    D2 --> E2
