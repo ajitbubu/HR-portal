@@ -42,8 +42,25 @@ media/
 # Database
 *.db
 *.sqlite3
+*.db-journal
 
 # Playwright
 frontend/.auth/
 frontend/test-results/
 frontend/playwright-report/
+test-results/
+
+# TypeScript build cache
+*.tsbuildinfo
+
+# Office / exported diagram files (do not commit binary/generated docs to the repo)
+*.xlsx
+*.docx
+*.pptx
+*.pdf
+*.html
+.~lock.*
+~$*
+
+# Internal tool specs
+docs/superpowers/
