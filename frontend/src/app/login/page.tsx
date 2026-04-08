@@ -86,11 +86,6 @@ export default function LoginPage() {
     }
   };
 
-  const quickLogin = (email: string, pass: string) => {
-    setEmail(email);
-    setPassword(pass);
-  };
-
   return (
     <div className="min-h-screen flex">
       {/* Left Panel - Branding */}
@@ -195,28 +190,6 @@ export default function LoginPage() {
                 ) : "Sign In"}
               </button>
             </form>
-
-            {/* Quick Login */}
-            <div className="mt-6">
-              <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">Quick access - Demo accounts</p>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { label: "Admin", email: "sudhir@datasafeguard.ai", pass: "admin123", color: "bg-purple-50 text-purple-700 ring-purple-100" },
-                  { label: "HR Admin", email: "hr@datasafeguard.us", pass: "hr123", color: "bg-blue-50 text-blue-700 ring-blue-100" },
-                  { label: "Manager", email: "manager@datasafeguard.us", pass: "manager123", color: "bg-amber-50 text-amber-700 ring-amber-100" },
-                  { label: "Employee", email: "employee@datasafeguard.us", pass: "employee123", color: "bg-emerald-50 text-emerald-700 ring-emerald-100" },
-                ].map((acc) => (
-                  <button
-                    key={acc.label}
-                    type="button"
-                    onClick={() => quickLogin(acc.email, acc.pass)}
-                    className={`text-xs font-medium py-2 px-3 rounded-xl ring-1 transition-all hover:shadow-sm ${acc.color}`}
-                  >
-                    {acc.label}
-                  </button>
-                ))}
-              </div>
-            </div>
 
             <p className="text-center text-[11px] text-gray-400 mt-6">&copy; 2026 DataSafeguard HR Portal</p>
           </div>
